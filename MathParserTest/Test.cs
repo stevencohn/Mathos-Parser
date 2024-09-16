@@ -26,13 +26,14 @@ namespace Mathos.Parser.Test
 			parser.LocalVariables.Add("tablecols", 5);
 			parser.LocalVariables.Add("tablerows", 15);
 
-			//parser.LocalFunctions.Add("cell", inputs =>
-			//{
-			//	return 0.0;
-			//});
+			parser.LocalFunctions.Add("cell", inputs =>
+			{
+				return 0.0;
+			});
 
 			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
 			{
+				Debug.WriteLine($"calling GetCellValue({args.Name})");
 				args.Value = 123.ToString();
 			};
 
@@ -155,7 +156,7 @@ namespace Mathos.Parser.Test
 		}
 
 		[TestMethod]
-		[ExpectedException(typeof(MathParserException))]
+		[ExpectedException(typeof(CalculatorException))]
 		public void UndefinedVariableException()
 		{
 			var parser = new MathParser();
@@ -173,7 +174,7 @@ namespace Mathos.Parser.Test
 		}
 
 		[TestMethod]
-		[ExpectedException(typeof(MathParserException))]
+		[ExpectedException(typeof(CalculatorException))]
 		public void UndefinedOperatorException()
 		{
 			var parser = new MathParser();

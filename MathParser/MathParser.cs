@@ -499,7 +499,7 @@ namespace Mathos.Parser
 						var value = GetCellContentInternal(tokens[i]);
 						if (value is null)
 						{
-							throw new MathParserException(
+							throw new CalculatorException(
 								$"invalid parameter at cell {tokens[i]}");
 						}
 
@@ -521,7 +521,7 @@ namespace Mathos.Parser
 			{
 				if (index == 0 || index == tokens.Count - 1)
 				{
-					throw new MathParserException("invalid range");
+					throw new CalculatorException("invalid range");
 				}
 
 				// cells...
@@ -529,7 +529,7 @@ namespace Mathos.Parser
 				var match = pattern.Match(tokens[index - 1]);
 				if (!match.Success)
 				{
-					throw new MathParserException(
+					throw new CalculatorException(
 						$"undefined cell ref [{tokens[index - 1]}]");//string.Format(ErrUndefinedSymbol, cell1), p1);
 				}
 
@@ -539,7 +539,7 @@ namespace Mathos.Parser
 				match = pattern.Match(tokens[index + 1]);
 				if (!match.Success)
 				{
-					throw new MathParserException(
+					throw new CalculatorException(
 						$"undefined cell ref [{tokens[index - 1]}]");//string.Format(ErrUndefinedSymbol, cell1), p1);
 				}
 
@@ -564,7 +564,7 @@ namespace Mathos.Parser
 						var value = GetCellContentInternal($"{col1}{row}");
 						if (value is null)
 						{
-							throw new MathParserException(
+							throw new CalculatorException(
 								$"invalid parameter at cell {col1}{row1}");
 						}
 
@@ -587,7 +587,7 @@ namespace Mathos.Parser
 						var v = GetCellContentInternal($"{CellIndexToLetters(col)}{row1}");
 						if (v is null)
 						{
-							throw new MathParserException(
+							throw new CalculatorException(
 								$"invalid parameter at cell {CellIndexToLetters(col)}{row1}");
 						}
 
@@ -770,7 +770,7 @@ namespace Mathos.Parser
 				case 1:
 					if (!double.TryParse(tokens[0], NumberStyles.Number, CultureInfo, out token0))
 					{
-						throw new MathParserException("local variable " + tokens[0] + " is undefined");
+						throw new CalculatorException("local variable " + tokens[0] + " is undefined");
 					}
 
 					return token0;
@@ -783,7 +783,7 @@ namespace Mathos.Parser
 
 						if (!double.TryParse(first + tokens[1], NumberStyles.Number, CultureInfo, out token1))
 						{
-							throw new MathParserException("local variable " + first + tokens[1] + " is undefined");
+							throw new CalculatorException("local variable " + first + tokens[1] + " is undefined");
 						}
 
 						return token1;
@@ -791,12 +791,12 @@ namespace Mathos.Parser
 
 					if (!Operators.ContainsKey(op))
 					{
-						throw new MathParserException("operator " + op + " is not defined");
+						throw new CalculatorException("operator " + op + " is not defined");
 					}
 
 					if (!double.TryParse(tokens[1], NumberStyles.Number, CultureInfo, out token1))
 					{
-						throw new MathParserException("local variable " + tokens[1] + " is undefined");
+						throw new CalculatorException("local variable " + tokens[1] + " is undefined");
 					}
 
 					return Operators[op](0, token1);
@@ -814,7 +814,7 @@ namespace Mathos.Parser
 
 					if (!double.TryParse(tokens[opPlace + 1], NumberStyles.Number, CultureInfo, out rhs))
 					{
-						throw new MathParserException("local variable " + tokens[opPlace + 1] + " is undefined");
+						throw new CalculatorException("local variable " + tokens[opPlace + 1] + " is undefined");
 					}
 
 					if (op.Key == "-" && opPlace == 0)
@@ -829,7 +829,7 @@ namespace Mathos.Parser
 
 						if (!double.TryParse(tokens[opPlace - 1], NumberStyles.Number, CultureInfo, out lhs))
 						{
-							throw new MathParserException("local variable " + tokens[opPlace - 1] + " is undefined");
+							throw new CalculatorException("local variable " + tokens[opPlace - 1] + " is undefined");
 						}
 
 						var result = op.Value(lhs, rhs);
@@ -841,7 +841,7 @@ namespace Mathos.Parser
 
 			if (!double.TryParse(tokens[0], NumberStyles.Number, CultureInfo, out token0))
 			{
-				throw new MathParserException("local variable " + tokens[0] + " is undefined");
+				throw new CalculatorException("local variable " + tokens[0] + " is undefined");
 			}
 
 			return token0;
