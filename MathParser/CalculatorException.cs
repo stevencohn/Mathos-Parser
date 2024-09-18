@@ -3,7 +3,7 @@
 	using System;
 
 
-	public sealed class CalculatorException : Exception
+	internal sealed class CalculatorException : Exception
 	{
 
 		public CalculatorException(string message)

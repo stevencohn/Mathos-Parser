@@ -13,29 +13,29 @@ namespace Mathos.Parser
 		String,
 		Empty
 	}
-	internal class VariantValue
+	internal class Variant
 	{
 		private readonly VariantType variantType;
 		private readonly bool? boolValue;
 		private readonly double? doubleValue;
 		private readonly string? stringValue;
 
-		public VariantValue(bool value)
+		public Variant(bool value)
 		{
 			boolValue = value;
 			variantType = VariantType.Boolean;
 		}
-		public VariantValue(double value)
+		public Variant(double value)
 		{
 			doubleValue = value;
 			variantType = VariantType.Double;
 		}
-		public VariantValue(int value)
+		public Variant(int value)
 		{
 			doubleValue = value;
 			variantType = VariantType.Double;
 		}
-		public VariantValue(string value)
+		public Variant(string value)
 		{
 			stringValue = value;
 			variantType = VariantType.String;
@@ -44,7 +44,7 @@ namespace Mathos.Parser
 		public bool BooleanValue => boolValue ?? false;
 		public double DoubleValue => doubleValue ?? 0.0;
 		public string StringValue => stringValue ?? string.Empty;
-		public int CompareTo(VariantValue other)
+		public int CompareTo(Variant other)
 		{
 			if (other.VariantType == VariantType)
 			{
@@ -86,67 +86,36 @@ namespace Mathos.Parser
 
 	internal class VariantList
 	{
-		private readonly List<VariantValue> list;
+		private readonly List<Variant> list;
 
 		public VariantList()
 		{
-			list = new List<VariantValue>();
+			list = new List<Variant>();
 		}
-		public void Add(bool value)
+		public VariantList(params double[] values)
+			: this()
 		{
-			list.Add(new VariantValue(value));
-		}
-		public void Add(double value)
-		{
-			list.Add(new VariantValue(value));
-		}
-		public void Add(double[] values)
-		{
-			foreach (var v in values)
+			foreach (var value in values)
 			{
-				Add(v);
+				list.Add(new Variant(value));
 			}
 		}
-		public void Add(VariantValue other)
+		public VariantList(IEnumerable<double> values)
+			: this()
 		{
-			list.Add(other);
+			foreach (var value in values)
+			{
+				list.Add(new Variant(value));
+			}
 		}
-
-		public void Add(string value)
-		{
-			list.Add(new VariantValue(value));
-		}
-
 		public int Count
 		{
 			get => list.Count;
 		}
-
 		public double this[int i]
 		{
 			get => list[i].DoubleValue;
 		}
-
-		public bool GetBoolean(int i)
-		{
-			return list[i].BooleanValue;
-		}
-
-		public string GetString(int i)
-		{
-			return list[i].StringValue;
-		}
-
-		public VariantValue ItemAt(int index)
-		{
-			if (index >= 0 && index < list.Count)
-			{
-				return list[index];
-			}
-
-			throw new CalculatorException("ItemAt index is out of range");
-		}
-
 		public VariantList Assert(params VariantType[] types)
 		{
 			// list should contain at least the required types
@@ -165,12 +134,10 @@ namespace Mathos.Parser
 
 			return this;
 		}
-
-		public VariantValue[] ToArray()
+		public Variant[] ToArray()
 		{
 			return list.ToArray();
 		}
-
 		public double[] ToDoubleArray()
 		{
 			var doubles = new List<double>();

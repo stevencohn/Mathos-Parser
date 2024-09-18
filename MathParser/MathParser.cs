@@ -18,10 +18,10 @@ using System.Text.RegularExpressions;
 
 namespace Mathos.Parser
 {
-	public delegate void GetCellValueHandler(object sender, GetCellValueEventArgs e);
+	internal delegate void GetCellValueHandler(object sender, GetCellValueEventArgs e);
 
 
-	public class GetCellValueEventArgs : EventArgs
+	internal class GetCellValueEventArgs : EventArgs
 	{
 		public GetCellValueEventArgs(string name)
 		{
@@ -39,7 +39,7 @@ namespace Mathos.Parser
 	/// This is considered the default parser for mathematical expressions and provides baseline functionality.
 	/// For more specialized parsers, see <seealso cref="BooleanParser"/> and <seealso cref="Scripting.ScriptParser"/>.
 	/// </remarks>
-	public class MathParser
+	internal class MathParser
 	{
 		/// <summary>
 		/// Regex pattern for matching cell addresses of the form [col-letters][row-number] where
@@ -62,7 +62,7 @@ namespace Mathos.Parser
 		/// <summary>
 		/// This contains all of the functions defined for the parser.
 		/// </summary>
-		public Dictionary<string, Func<double[], double>> LocalFunctions { get; set; }
+		public Dictionary<string, Func<VariantList, double>> LocalFunctions { get; set; }
 
 		/// <summary>
 		/// This contains all of the variables defined for the parser.
@@ -74,11 +74,6 @@ namespace Mathos.Parser
 		/// </summary>
 		[Obsolete]
 		public CultureInfo CultureInfo { get; set; }
-
-		/// <summary>
-		/// A random number generator that may be used by functions and operators.
-		/// </summary>
-		public Random Random { get; set; } = new Random();
 
 		/// <summary>
 		/// The keyword to use for variable declarations when parsing. The default value is "let".
@@ -137,7 +132,7 @@ namespace Mathos.Parser
 				Operators = new Dictionary<string, Func<double, double, double>>();
 			}
 
-			LocalFunctions = new Dictionary<string, Func<double[], double>>();
+			LocalFunctions = new Dictionary<string, Func<VariantList, double>>();
 			if (loadPreDefinedFunctions)
 			{
 				// TODO: e.g. LocalFunctions.Add("foo", inputs => Math.Abs(inputs[0]));
@@ -246,10 +241,10 @@ namespace Mathos.Parser
 			if (identifyComments)
 			{
 				// Delete Comments #{Comment}#
-				mathExpression = System.Text.RegularExpressions.Regex.Replace(mathExpression, "#\\{.*?\\}#", "");
+				mathExpression = Regex.Replace(mathExpression, "#\\{.*?\\}#", "");
 
 				// Delete Comments #Comment
-				mathExpression = System.Text.RegularExpressions.Regex.Replace(mathExpression, "#.*$", "");
+				mathExpression = Regex.Replace(mathExpression, "#.*$", "");
 			}
 
 			if (correctExpression)
@@ -561,14 +556,15 @@ namespace Mathos.Parser
 					// iterate rows in column
 					for (var row = r1; row <= r2; row++)
 					{
-						var value = GetCellContentInternal($"{col1}{row}");
-						if (value is null)
-						{
-							throw new CalculatorException(
+						var value = GetCellContentInternal($"{col1}{row}")
+							?? throw new CalculatorException(
 								$"invalid parameter at cell {col1}{row1}");
+
+						if (values.Count > 0)
+						{
+							values.Add(",");
 						}
 
-						if (values.Count > 0) values.Add(",");
 						values.Add(value);
 					}
 				}
@@ -584,14 +580,15 @@ namespace Mathos.Parser
 					// iterate columns in row
 					for (var col = c1; col <= c2; col++)
 					{
-						var v = GetCellContentInternal($"{CellIndexToLetters(col)}{row1}");
-						if (v is null)
-						{
-							throw new CalculatorException(
+						var v = GetCellContentInternal($"{CellIndexToLetters(col)}{row1}")
+							?? throw new CalculatorException(
 								$"invalid parameter at cell {CellIndexToLetters(col)}{row1}");
+
+						if (values.Count > 0)
+						{
+							values.Add(",");
 						}
 
-						if (values.Count > 0) values.Add(",");
 						values.Add(v);
 					}
 				}
@@ -662,11 +659,10 @@ namespace Mathos.Parser
 
 		private double MathParserLogic(List<string> tokens)
 		{
-			// Variables replacement
-			while (tokens.IndexOf("(") != -1)
+			var open = tokens.LastIndexOf("(");
+			while (open != -1)
 			{
 				// getting data between "(" and ")"
-				var open = tokens.LastIndexOf("(");
 				var close = tokens.IndexOf(")", open); // in case open is -1, i.e. no "(" // , open == 0 ? 0 : open - 1
 
 				if (open >= close)
@@ -674,14 +670,13 @@ namespace Mathos.Parser
 					throw new ArithmeticException("No closing bracket/parenthesis. Token: " + open.ToString(CultureInfo));
 				}
 
-				var roughExpr = new List<string>();
-
+				var subexpr = new List<string>();
 				for (var i = open + 1; i < close; i++)
 				{
-					roughExpr.Add(tokens[i]);
+					subexpr.Add(tokens[i]);
 				}
 
-				double tmpResult;
+				double result;
 
 				var args = new List<double>();
 				var functionName = tokens[open == 0 ? 0 : open - 1];
@@ -693,38 +688,41 @@ namespace Mathos.Parser
 
 				if (fn is not null)
 				{
-					if (roughExpr.Contains(","))
+					if (subexpr.Contains(","))
 					{
 						// converting all arguments into a double array
-						for (var i = 0; i < roughExpr.Count; i++)
+						for (var i = 0; i < subexpr.Count; i++)
 						{
 							var defaultExpr = new List<string>();
 							var firstCommaOrEndOfExpression =
-								roughExpr.IndexOf(",", i) != -1
-									? roughExpr.IndexOf(",", i)
-									: roughExpr.Count;
+								subexpr.IndexOf(",", i) != -1
+									? subexpr.IndexOf(",", i)
+									: subexpr.Count;
 
 							while (i < firstCommaOrEndOfExpression)
 							{
-								defaultExpr.Add(roughExpr[i++]);
+								defaultExpr.Add(subexpr[i++]);
 							}
 
 							args.Add(defaultExpr.Count == 0 ? 0 : BasicArithmeticalExpression(defaultExpr));
 						}
 
 						// finally, passing the arguments to the given function
-						tmpResult = double.Parse(fn(args.ToArray()).ToString(CultureInfo), CultureInfo);
+						result = double.Parse(
+							fn(new VariantList(args)).ToString(CultureInfo),
+							CultureInfo);
 					}
 					else
 					{
-						if (roughExpr.Count == 0)
-							tmpResult = fn(new double[0]);
+						if (subexpr.Count == 0)
+						{
+							result = fn(new VariantList());
+						}
 						else
 						{
-							tmpResult = double.Parse(fn(new[]
-							{
-								BasicArithmeticalExpression(roughExpr)
-							}).ToString(CultureInfo), CultureInfo);
+							result = double.Parse(
+								fn(new VariantList(BasicArithmeticalExpression(subexpr))
+							).ToString(CultureInfo), CultureInfo);
 						}
 					}
 				}
@@ -732,13 +730,13 @@ namespace Mathos.Parser
 				{
 					// if no function is need to execute following expression, pass it
 					// to the "BasicArithmeticalExpression" method.
-					tmpResult = BasicArithmeticalExpression(roughExpr);
+					result = BasicArithmeticalExpression(subexpr);
 				}
 
 				// when all the calculations have been done
 				// we replace the "opening bracket with the result"
 				// and removing the rest.
-				tokens[open] = tmpResult.ToString(CultureInfo);
+				tokens[open] = result.ToString(CultureInfo);
 				tokens.RemoveRange(open + 1, close - open);
 
 				if (fn is not null)
@@ -747,6 +745,8 @@ namespace Mathos.Parser
 					// the function name as well.
 					tokens.RemoveAt(open - 1);
 				}
+
+				open = tokens.LastIndexOf("(");
 			}
 
 			// at this point, we should have replaced all brackets
@@ -755,6 +755,7 @@ namespace Mathos.Parser
 			// any more!
 			return BasicArithmeticalExpression(tokens);
 		}
+
 
 		private double BasicArithmeticalExpression(List<string> tokens)
 		{

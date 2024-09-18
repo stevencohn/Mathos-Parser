@@ -8,63 +8,65 @@
 
 	internal class FunctionFactory
 	{
-		private readonly Dictionary<string, Func<double[], double>> functions;
+		private readonly Dictionary<string, Func<VariantList, double>> functions;
 
 		public FunctionFactory()
 		{
-			functions = new Dictionary<string, Func<double[], double>>();
+			functions = new Dictionary<string, Func<VariantList, double>>();
 		}
 
 
-		public Func<double[], double> Find(string name)
+		public Func<VariantList, double> Find(string name)
 		{
 			if (functions.ContainsKey(name))
 			{
 				return functions[name];
 			}
 
-			Func<double[], double> function = name switch
-			{
-				"abs" => inputs => Math.Abs(inputs[0]),
-				"acos" => inputs => Math.Acos(inputs[0]),
-				"arccos" => inputs => Math.Acos(inputs[0]),
-				"arcsin" => inputs => Math.Asin(inputs[0]),
-				"arctan" => inputs => Math.Atan(inputs[0]),
-				"asin" => inputs => Math.Asin(inputs[0]),
-				"atan" => inputs => Math.Atan(inputs[0]),
-				"atan2" => inputs => Math.Atan2(inputs[0], inputs[1]),
-				"average" => inputs => Average(inputs),
-				"ceil" => inputs => Math.Ceiling(inputs[0]),
-				"ceiling" => inputs => Math.Ceiling(inputs[0]),
-				"cos" => inputs => Math.Cos(inputs[0]),
-				"cosh" => inputs => Math.Cosh(inputs[0]),
-				"exp" => inputs => Math.Exp(inputs[0]),
-				"floor" => inputs => Math.Floor(inputs[0]),
-				"max" => inputs => Max(inputs),
-				"median" => inputs => Median(inputs),
-				"min" => inputs => Min(inputs),
-				"mode" => inputs => Mode(inputs),
-				"pow" => inputs => Math.Pow(inputs[0], inputs[1]),
-				"rem" => inputs => Math.IEEERemainder(inputs[0], inputs[1]),
-				"range" => inputs => Range(inputs),
-				"root" => inputs => Math.Pow(inputs[0], 1 / inputs[1]),
-				"round" => inputs => Math.Round(inputs[0], MidpointRounding.AwayFromZero),
-				"sign" => inputs => Math.Sign(inputs[0]),
-				"sin" => inputs => Math.Sin(inputs[0]),
-				"sinh" => inputs => Math.Sinh(inputs[0]),
-				"sqrt" => inputs => Math.Sqrt(inputs[0]),
-				"stdev" => inputs => StandardDeviation(inputs),
-				"sum" => inputs => Sum(inputs),
-				"tan" => inputs => Math.Tan(inputs[0]),
-				"tanh" => inputs => Math.Tanh(inputs[0]),
-				"trunc" => inputs => Math.Truncate(inputs[0]),
-				"truncate" => inputs => inputs[0] < 0 ? -Math.Floor(-inputs[0]) : Math.Floor(inputs[0]),
-				"variance" => inputs => Variance(inputs),
+			// just a short alias
+			var D = VariantType.Double;
 
+			Func<VariantList, double> function = name switch
+			{
+				"abs" => inputs => Math.Abs(inputs.Assert(D)[0]),
+				"acos" => inputs => Math.Acos(inputs.Assert(D)[0]),
+				"arccos" => inputs => Math.Acos(inputs.Assert(D)[0]),
+				"arcsin" => inputs => Math.Asin(inputs.Assert(D)[0]),
+				"arctan" => inputs => Math.Atan(inputs.Assert(D)[0]),
+				"asin" => inputs => Math.Asin(inputs.Assert(D)[0]),
+				"atan" => inputs => Math.Atan(inputs.Assert(D)[0]),
+				"atan2" => inputs => Math.Atan2(inputs.Assert(D, D)[0], inputs[1]),
+				"average" => inputs => Average(inputs.Assert(D, D).ToDoubleArray()),
+				"ceil" => inputs => Math.Ceiling(inputs.Assert(D)[0]),
+				"ceiling" => inputs => Math.Ceiling(inputs.Assert(D)[0]),
 				/*
 				"cell" => new MathFunction("cell", (p) => Cell(p), true),
-				"countif" => new MathFunction("countif", (p) => CountIf(p)),
 				*/
+				"cos" => inputs => Math.Cos(inputs.Assert(D)[0]),
+				"cosh" => inputs => Math.Cosh(inputs.Assert(D)[0]),
+				"countif" => inputs => CountIf(inputs),
+				"exp" => inputs => Math.Exp(inputs.Assert(D)[0]),
+				"floor" => inputs => Math.Floor(inputs.Assert(D)[0]),
+				"max" => inputs => Max(inputs.Assert(D).ToDoubleArray()),
+				"median" => inputs => Median(inputs.Assert(D).ToDoubleArray()),
+				"min" => inputs => Min(inputs.Assert(D).ToDoubleArray()),
+				"mode" => inputs => Mode(inputs.Assert(D).ToDoubleArray()),
+				"pow" => inputs => Math.Pow(inputs.Assert(D)[0], inputs[1]),
+				"rem" => inputs => Math.IEEERemainder(inputs.Assert(D)[0], inputs[1]),
+				"range" => inputs => Range(inputs.Assert(D).ToDoubleArray()),
+				"root" => inputs => Math.Pow(inputs.Assert(D, D)[0], 1 / inputs[1]),
+				"round" => inputs => Math.Round(inputs.Assert(D)[0], MidpointRounding.AwayFromZero),
+				"sign" => inputs => Math.Sign(inputs.Assert(D)[0]),
+				"sin" => inputs => Math.Sin(inputs.Assert(D)[0]),
+				"sinh" => inputs => Math.Sinh(inputs.Assert(D)[0]),
+				"sqrt" => inputs => Math.Sqrt(inputs.Assert(D)[0]),
+				"stdev" => inputs => StandardDeviation(inputs.Assert(D).ToDoubleArray()),
+				"sum" => inputs => Sum(inputs.Assert(D).ToDoubleArray()),
+				"tan" => inputs => Math.Tan(inputs.Assert(D)[0]),
+				"tanh" => inputs => Math.Tanh(inputs.Assert(D)[0]),
+				"trunc" => inputs => Math.Truncate(inputs.Assert(D)[0]),
+				"truncate" => inputs => inputs[0] < 0 ? -Math.Floor(-inputs.Assert(D)[0]) : Math.Floor(inputs.Assert(D)[0]),
+				"variance" => inputs => Variance(inputs.Assert(D).ToDoubleArray()),
 				_ => null
 			};
 
@@ -128,17 +130,16 @@
 		*/
 
 
-		/*
-		private static double CountIf(FormulaValues p)
+		private static double CountIf(VariantList p)
 		{
 			if (p.Count < 2)
-				throw new FormulaException($"countif function requires at least two parameters");
+				throw new CalculatorException($"countif function requires at least two parameters");
 
 			var array = p.ToArray();
 
 			// values are items 0..last-1, ignore empty cells
 			var values = array.Take(p.Count - 1)
-				.Where(p => p.Type != FormulaValueType.String || ((string)p.Value).Length > 0);
+				.Where(p => p.VariantType != VariantType.String || p.StringValue.Length > 0);
 
 			// the countif testcase is always the last parameter
 			var test = array[array.Length - 1];
@@ -157,25 +158,24 @@
 				s = test.ToString();
 			}
 
-			FormulaValue expected;
+			Variant expected;
 			if (double.TryParse(s, out var d)) // Culture-specific user input?!
 			{
-				expected = new FormulaValue(d);
+				expected = new Variant(d);
 			}
 			else if (bool.TryParse(s, out bool b))
 			{
-				expected = new FormulaValue(b);
+				expected = new Variant(b);
 			}
 			else
 			{
-				expected = new FormulaValue(s);
+				expected = new Variant(s);
 			}
 
 			return oper == '!'
 				? values.Count(v => v.CompareTo(expected) != 0)
 				: values.Count(v => v.CompareTo(expected) == result);
 		}
-		*/
 
 
 		private static double Max(double[] p)
