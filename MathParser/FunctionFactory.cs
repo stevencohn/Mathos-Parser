@@ -18,15 +18,16 @@
 
 		public Func<VariantList, double> Find(string name)
 		{
-			if (functions.ContainsKey(name))
+			var lower = name.ToLower();
+			if (functions.ContainsKey(lower))
 			{
-				return functions[name];
+				return functions[lower];
 			}
 
 			// just a short alias
 			var D = VariantType.Double;
 
-			Func<VariantList, double> function = name switch
+			Func<VariantList, double> function = lower switch
 			{
 				"abs" => inputs => Math.Abs(inputs.Assert(D)[0]),
 				"acos" => inputs => Math.Acos(inputs.Assert(D)[0]),
@@ -72,8 +73,8 @@
 
 			if (function is not null)
 			{
-				Debug.WriteLine($"fun=[{name}]");
-				functions.Add(name, function);
+				Debug.WriteLine($"fun=[{lower}]");
+				functions.Add(lower, function);
 				return function;
 			}
 

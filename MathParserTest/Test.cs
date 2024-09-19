@@ -25,6 +25,8 @@ namespace Mathos.Parser.Test
 
 			parser.LocalVariables.Add("tablecols", 5);
 			parser.LocalVariables.Add("tablerows", 15);
+			parser.LocalVariables.Add("col", 2);
+			parser.LocalVariables.Add("row", 15);
 
 			parser.LocalFunctions.Add("cell", inputs =>
 			{
@@ -44,6 +46,8 @@ namespace Mathos.Parser.Test
 			Assert.AreEqual(7, parser.Parse("tablecols + 2"));
 
 			Assert.AreEqual(3, parser.Parse("countif(A1:A3, 123)"));
+
+			Assert.AreEqual(123 * 3, parser.Parse("Sum(A1:Cell(0,-11)"));
 		}
 
 

@@ -46,6 +46,7 @@ namespace Mathos.Parser
 		/// row-number is a positive, non-zero integer. Capture groups are named c)ell and r)row.
 		/// </summary>
 		private const string AddressPattern = @"^(?<c>[a-zA-Z]+)(?<r>\d+)$";
+		private const string CellLookupFnName = "cell";
 
 		private const char GeqSign = (char)8805;
 		private const char LeqSign = (char)8804;
@@ -185,6 +186,7 @@ namespace Mathos.Parser
 		{
 			var tokens = Lexer(mathExpression);
 			tokens = ReplaceVariables(tokens);
+			tokens = PreprocessCellLookups(tokens);
 			tokens = GetCellContents(tokens);
 			return MathParserLogic(tokens);
 		}
@@ -507,6 +509,75 @@ namespace Mathos.Parser
 		}
 
 
+		private List<string> PreprocessCellLookups(List<string> tokens)
+		{
+			var open = tokens.LastIndexOf("(");
+			while (open > 0) // leave room for "cell" fn token prior to "("
+			{
+				var close = tokens.IndexOf(")", open);
+				if (open >= close)
+				{
+					throw new CalculatorException($"No closing bracket/parenthesis. Token: {open}");
+				}
+
+				if (tokens[open - 1].Equals(CellLookupFnName, StringComparison.CurrentCultureIgnoreCase))
+				{
+					var lparams = new List<string>();
+					var rparams = new List<string>();
+					var commas = 0;
+					for (var i = open + 1; i < close; i++)
+					{
+						if (tokens[i] == ",")
+						{
+							commas++;
+						}
+						else if (commas == 0)
+						{
+							lparams.Add(tokens[i]);
+						}
+						else
+						{
+							rparams.Add(tokens[i]);
+						}
+					}
+
+					if (commas != 1)
+					{
+						throw new CalculatorException("The cell function must have two parameters");
+					}
+
+					if (!LocalVariables.ContainsKey("col") || !LocalVariables.ContainsKey("row"))
+					{
+						throw new CalculatorException("The cell function requires the col and row variables");
+					}
+
+					var currentCol = LocalVariables["col"] - 1; // 1-based to 0-based
+					var currentRow = LocalVariables["row"] - 1; // 1-based to 0-based
+
+					lparams.AddRange(new string[] { "+", ((int)currentCol).ToString() });
+					var col = (int)BasicArithmeticalExpression(lparams);
+
+					rparams.AddRange(new string[] { "+", ((int)currentRow).ToString() });
+					var row = BasicArithmeticalExpression(rparams);
+
+					var cellName = $"{CellIndexToLetters(col)}{row}";
+
+					tokens.RemoveRange(open - 1, close - open + 1);
+					tokens.Insert(open - 1, cellName);
+				}
+
+				open = tokens.LastIndexOf("(", open - 1);
+			}
+
+			for (var i = 0; i < tokens.Count; i++)
+			{
+				Debug.WriteLine($"... preproc[{i}] = [{tokens[i]}]");
+			}
+
+			return tokens;
+		}
+
+
 		private List<string> GetCellContents(List<string> tokens)
 		{
 			var pattern = new Regex(AddressPattern);
@@ -663,7 +734,7 @@ namespace Mathos.Parser
 			while (open != -1)
 			{
 				// getting data between "(" and ")"
-				var close = tokens.IndexOf(")", open); // in case open is -1, i.e. no "(" // , open == 0 ? 0 : open - 1
+				var close = tokens.IndexOf(")", open); // incase open is -1, i.e. no "(" // , open == 0 ? 0 : open - 1
 
 				if (open >= close)
 				{
