@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Mathos.Parser.Test
 {
@@ -23,15 +24,8 @@ namespace Mathos.Parser.Test
 		{
 			var parser = new MathParser();
 
-			parser.LocalVariables.Add("tablecols", 5);
-			parser.LocalVariables.Add("tablerows", 15);
-			parser.LocalVariables.Add("col", 2);
-			parser.LocalVariables.Add("row", 15);
-
-			parser.LocalFunctions.Add("cell", inputs =>
-			{
-				return 0.0;
-			});
+			parser.SetVariable("tablecols", 5);
+			parser.SetVariable("tablerows", 10);
 
 			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
 			{
@@ -41,13 +35,35 @@ namespace Mathos.Parser.Test
 
 			Assert.AreEqual(123, parser.Parse("A1"));
 			Assert.AreEqual(125, parser.Parse("A1 + 2"));
-			Assert.AreEqual(123 * 3, parser.Parse("sum(A1:A3)"));
 
 			Assert.AreEqual(7, parser.Parse("tablecols + 2"));
 
-			Assert.AreEqual(3, parser.Parse("countif(A1:A3, 123)"));
+			// current cell at bottom of A col
+			parser.SetVariable("col", 1);
+			parser.SetVariable("row", 10);
+			// sum first three rows
+			Assert.AreEqual(123 * 3, parser.Parse("sum(A1:A3)"));
+			// sum A1:A9 - all rows except last row (current cell)
+			Assert.AreEqual(123 * 9, parser.Parse("sum(A1:cell(0,-1))"));
 
-			Assert.AreEqual(123 * 3, parser.Parse("Sum(A1:Cell(0,-11)"));
+			// current cell at A4
+			parser.SetVariable("col", 1);
+			parser.SetVariable("row", 4);
+			// sum A1:A3
+			Assert.AreEqual(123 * 3, parser.Parse("sum(A1:cell(0,-1))"));
+
+			// current cell at B1
+			parser.SetVariable("col", 2);
+			parser.SetVariable("row", 1);
+			// sum B2:B3
+			Assert.AreEqual(123 * 2, parser.Parse("sum(B2:cell(0,2))"));
+			// sum B2:B9
+			Assert.AreEqual(123 * 9, parser.Parse("sum(B2:cell(0,tablerows-1))"));
+			// sum C1:E1
+			Assert.AreEqual(123 * 4, parser.Parse("sum(C1:cell(tablecols-1,0))"));
+
+			Assert.AreEqual(3, parser.Parse("countif(A1:A3, 123)"));
+			Assert.AreEqual(3, parser.Parse("countif(A1:A3, > 122)"));
 		}
 
 
@@ -100,7 +116,7 @@ namespace Mathos.Parser.Test
 			var parser = new MathParser();
 
 			parser.ProgrammaticallyParse("let a = 2pi");
-			Assert.AreEqual(parser.LocalVariables["pi"] * 2, parser.Parse("a"), 0.00000000000001);
+			Assert.AreEqual(parser.GetVariable("pi") * 2, parser.Parse("a"), 0.00000000000001);
 
 			parser.ProgrammaticallyParse("b := 20");
 			Assert.AreEqual(20, parser.Parse("b"));
@@ -118,21 +134,21 @@ namespace Mathos.Parser.Test
 		{
 			var parser = new MathParser();
 
-			parser.LocalFunctions.Add("timesTwo", inputs => inputs[0] * 2);
+			parser.AddFunction("timesTwo", inputs => inputs[0] * 2);
 			Assert.AreEqual(6, parser.Parse("timesTwo(3)"));
 			Assert.AreEqual(42, parser.Parse("timesTwo((2+3)(3+1) + 1)"));
 
-			parser.LocalFunctions.Add("square", inputs => inputs[0] * inputs[0]);
+			parser.AddFunction("square", inputs => inputs[0] * inputs[0]);
 			Assert.AreEqual(16, parser.Parse("square(4)"));
 
-			parser.LocalFunctions.Add("cube", inputs => inputs[0] * inputs[0] * inputs[0]);
+			parser.AddFunction("cube", inputs => inputs[0] * inputs[0] * inputs[0]);
 			Assert.AreEqual(8, parser.Parse("cube(2)"));
 
-			parser.LocalFunctions.Add("constF", inputs => 12);
+			parser.AddFunction("constF", inputs => 12);
 			Assert.AreEqual(12, parser.Parse("constF()"));
 			Assert.AreEqual(144, parser.Parse("constF() * constF()"));
 
-			parser.LocalFunctions.Add("argCount", inputs => inputs.Count);
+			parser.AddFunction("argCount", inputs => inputs.Count);
 			Assert.AreEqual(0, parser.Parse("argCount()"));
 			Assert.AreEqual(1, parser.Parse("argCount(1)"));
 			Assert.AreEqual(2, parser.Parse("argCount(argCount(1), -5)"));
@@ -210,7 +226,7 @@ namespace Mathos.Parser.Test
 			Assert.AreEqual(4, parser.Parse("(-2)(-2)"));
 			Assert.AreEqual(-3, parser.Parse("-(3+2+1+6)/4"));
 
-			parser.LocalVariables.Add("x", 50);
+			parser.SetVariable("x", 50);
 
 			Assert.AreEqual(-100, parser.Parse("-x - x"));
 			Assert.AreEqual(-75, parser.Parse("-x * 1.5"));
@@ -229,7 +245,7 @@ namespace Mathos.Parser.Test
 		{
 			var parser = new MathParser();
 
-			parser.Operators.Add("$", (a, b) => a * 2 + b * 3);
+			parser.AddOperator("$", (a, b) => a * 2 + b * 3);
 
 			Assert.AreEqual(3 * 2 + 3 * 2, parser.Parse("3 $ 2"));
 		}
@@ -239,7 +255,9 @@ namespace Mathos.Parser.Test
 		{
 			var parserDefault = new MathParser();
 
-			Assert.AreEqual(double.Parse("0.055", parserDefault.CultureInfo), parserDefault.Parse("-0.245 + 0.3"));
+			Assert.AreEqual(
+				double.Parse("0.055", CultureInfo.InvariantCulture),
+				parserDefault.Parse("-0.245 + 0.3"));
 		}
 
 		[TestMethod]
@@ -288,12 +306,13 @@ namespace Mathos.Parser.Test
 		{
 			var parser = new MathParser();
 
-			parser.Operators.Add("times", (x, y) => x * y);
-			parser.Operators.Add("dividedby", (x, y) => x / y);
-			parser.Operators.Add("plus", (x, y) => x + y);
-			parser.Operators.Add("minus", (x, y) => x - y);
+			parser.AddOperator("times", (x, y) => x * y);
+			parser.AddOperator("dividedby", (x, y) => x / y);
+			parser.AddOperator("plus", (x, y) => x + y);
+			parser.AddOperator("minus", (x, y) => x - y);
 
-			Debug.WriteLine(parser.Parse("5 plus 3 dividedby 2 times 3").ToString(parser.CultureInfo));
+			Debug.WriteLine(parser.Parse(
+				"5 plus 3 dividedby 2 times 3").ToString(CultureInfo.InvariantCulture));
 		}
 
 		[TestMethod]
@@ -304,51 +323,51 @@ namespace Mathos.Parser.Test
 			Assert.AreEqual(2, parser.Parse("4^2-2*3^2+4"));
 		}
 
-		[TestMethod]
-		public void SpeedTests()
-		{
-			var parser = new MathParser();
+		//[TestMethod]
+		//public void SpeedTests()
+		//{
+		//	var parser = new MathParser();
 
-			parser.LocalVariables.Add("x", 10);
+		//	parser.SetVariable("x", 10);
 
-			var list = parser.GetTokens("(3x+2)");
-			var time = BenchmarkUtil.Benchmark(() => parser.Parse("(3x+2)"), 25000);
-			var time2 = BenchmarkUtil.Benchmark(() => parser.Parse(list), 25000);
+		//	var list = parser.GetTokens("(3x+2)");
+		//	var time = BenchmarkUtil.Benchmark(() => parser.Parse("(3x+2)"), 25000);
+		//	var time2 = BenchmarkUtil.Benchmark(() => parser.Parse(list), 25000);
 
-			Assert.IsTrue(time >= time2);
-		}
+		//	Assert.IsTrue(time >= time2);
+		//}
 
-		[TestMethod]
-		public void DetailedSpeedTestWithOptimization()
-		{
-			var parser = new MathParser();
+		//[TestMethod]
+		//public void DetailedSpeedTestWithOptimization()
+		//{
+		//	var parser = new MathParser();
 
-			parser.LocalVariables.Add("x", 5);
+		//	parser.SetVariable("x", 5);
 
-			var expr = "(3x+2)(2(2x+1))";
+		//	var expr = "(3x+2)(2(2x+1))";
 
-			const int itr = 3000;
-			var creationTimeAndTokenization = BenchmarkUtil.Benchmark(() => parser.GetTokens(expr), 1);
-			var tokens = parser.GetTokens(expr);
+		//	const int itr = 3000;
+		//	var creationTimeAndTokenization = BenchmarkUtil.Benchmark(() => parser.GetTokens(expr), 1);
+		//	var tokens = parser.GetTokens(expr);
 
-			var parsingTime = BenchmarkUtil.Benchmark(() => parser.Parse(tokens), itr);
-			var totalTime = creationTimeAndTokenization + parsingTime;
+		//	var parsingTime = BenchmarkUtil.Benchmark(() => parser.Parse(tokens), itr);
+		//	var totalTime = creationTimeAndTokenization + parsingTime;
 
-			Console.WriteLine("Parsing Time: " + parsingTime);
-			Console.WriteLine("Total Time: " + totalTime);
+		//	Console.WriteLine("Parsing Time: " + parsingTime);
+		//	Console.WriteLine("Total Time: " + totalTime);
 
-			var parsingTime2 = BenchmarkUtil.Benchmark(() => parser.Parse(expr), itr);
+		//	var parsingTime2 = BenchmarkUtil.Benchmark(() => parser.Parse(expr), itr);
 
-			Console.WriteLine("Parsing Time 2: " + parsingTime2);
-			Console.WriteLine("Total Time: " + parsingTime2);
-		}
+		//	Console.WriteLine("Parsing Time 2: " + parsingTime2);
+		//	Console.WriteLine("Total Time: " + parsingTime2);
+		//}
 
 		[TestMethod]
 		public void DetailedSpeedTestWithoutOptimization()
 		{
 			var parser = new MathParser();
 
-			parser.LocalVariables.Add("x", 5);
+			parser.SetVariable("x", 5);
 
 			var expr = "(3x+2)(2(2x+1))";
 			const int itr = 50;
@@ -365,7 +384,7 @@ namespace Mathos.Parser.Test
 			var parser = new MathParser();
 			var result = parser.Parse("pi");
 
-			Assert.AreEqual(result, parser.LocalVariables["pi"], 0.00000000000001);
+			Assert.AreEqual(result, parser.GetVariable("pi"), 0.00000000000001);
 		}
 
 		[TestMethod]

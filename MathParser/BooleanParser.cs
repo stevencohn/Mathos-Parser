@@ -7,7 +7,7 @@ namespace Mathos.Parser
 {
 	internal class BooleanParser
 	{
-		public CultureInfo CultureInfo { get { return mathParser.CultureInfo; } }
+		//public CultureInfo CultureInfo { get { return mathParser.CultureInfo; } }
 		private MathParser mathParser;
 
 		public BooleanParser(MathParser parser)
@@ -104,7 +104,8 @@ namespace Mathos.Parser
 			string[] conditions = condition.Split('&', '|');
 			foreach (string c in conditions)
 			{
-				condition = condition.Replace(c, mathParser.ProgrammaticallyParse(c).ToString(CultureInfo));
+				condition = condition.Replace(c,
+					mathParser.ProgrammaticallyParse(c).ToString(CultureInfo.InvariantCulture));
 			}
 
 			var tokens = Lexer(condition);
@@ -182,7 +183,7 @@ namespace Mathos.Parser
 			switch (tokens.Count)
 			{
 				case 1:
-					return double.Parse(tokens[0], CultureInfo);
+					return double.Parse(tokens[0], CultureInfo.InvariantCulture);
 				case 2:
 					var op = tokens[0];
 
@@ -190,7 +191,7 @@ namespace Mathos.Parser
 					{
 						var first = op == "+" ? "" : (tokens[1].Substring(0, 1) == "-" ? "" : "-");
 
-						return double.Parse(first + tokens[1], CultureInfo);
+						return double.Parse(first + tokens[1], CultureInfo.InvariantCulture);
 					}
 					throw new Exception("Can't parse tokens as boolean expression: " + tokens[0] + " " + tokens[1]);
 				case 0:
@@ -200,8 +201,8 @@ namespace Mathos.Parser
 			int andIndex = tokens.IndexOf("&");
 			while (andIndex > 0)
 			{
-				var left = double.Parse(tokens[andIndex - 1], CultureInfo);
-				var right = double.Parse(tokens[andIndex + 1], CultureInfo);
+				var left = double.Parse(tokens[andIndex - 1], CultureInfo.InvariantCulture);
+				var right = double.Parse(tokens[andIndex + 1], CultureInfo.InvariantCulture);
 				var result = ToBoolean(left) && ToBoolean(right);
 				tokens[andIndex - 1] = result ? "1" : "0";
 				tokens.RemoveAt(andIndex);
@@ -212,8 +213,8 @@ namespace Mathos.Parser
 			int orIndex = tokens.IndexOf("|");
 			while (orIndex > 0)
 			{
-				var left = double.Parse(tokens[orIndex - 1], CultureInfo);
-				var right = double.Parse(tokens[orIndex + 1], CultureInfo);
+				var left = double.Parse(tokens[orIndex - 1], CultureInfo.InvariantCulture);
+				var right = double.Parse(tokens[orIndex + 1], CultureInfo.InvariantCulture);
 				var result = ToBoolean(left) || ToBoolean(right);
 				tokens[orIndex - 1] = result ? "1" : "0";
 				tokens.RemoveAt(orIndex);
@@ -221,7 +222,7 @@ namespace Mathos.Parser
 				orIndex = tokens.IndexOf("|");
 			}
 
-			return double.Parse(tokens[0], CultureInfo);
+			return double.Parse(tokens[0], CultureInfo.InvariantCulture);
 		}
 	}
 }

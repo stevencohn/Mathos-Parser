@@ -46,35 +46,19 @@ namespace Mathos.Parser
 		/// row-number is a positive, non-zero integer. Capture groups are named c)ell and r)row.
 		/// </summary>
 		private const string AddressPattern = @"^(?<c>[a-zA-Z]+)(?<r>\d+)$";
-		private const string CellLookupFnName = "cell";
+		private const string CellFnName = "cell";
+		private const string CountifFnName = "countif";
 
 		private const char GeqSign = (char)8805;
 		private const char LeqSign = (char)8804;
 		private const char NeqSign = (char)8800;
 
-		private FunctionFactory factory;
+		private readonly FunctionFactory factory;
 
-
-		/// <summary>
-		/// This contains all of the binary operators defined for the parser.
-		/// </summary>
-		public Dictionary<string, Func<double, double, double>> Operators { get; set; }
-
-		/// <summary>
-		/// This contains all of the functions defined for the parser.
-		/// </summary>
-		public Dictionary<string, Func<VariantList, double>> LocalFunctions { get; set; }
-
-		/// <summary>
-		/// This contains all of the variables defined for the parser.
-		/// </summary>
-		public Dictionary<string, double> LocalVariables { get; set; }
-
-		/// <summary>
-		/// The culture information to use when parsing expressions.
-		/// </summary>
-		[Obsolete]
-		public CultureInfo CultureInfo { get; set; }
+		private readonly Dictionary<string, Func<double, double, double>> operators;
+		private readonly Dictionary<string, double> variables;
+		private readonly Dictionary<string, Func<VariantList, double>> functions;
+		private readonly CultureInfo cultureInfo;
 
 		/// <summary>
 		/// The keyword to use for variable declarations when parsing. The default value is "let".
@@ -87,83 +71,127 @@ namespace Mathos.Parser
 
 
 		/// <summary>
-		/// Constructs a new <see cref="MathParser"/> with optional functions, operators, and variables.
+		/// Iniitalizes a new math parser.
 		/// </summary>
-		/// <param name="loadPreDefinedFunctions">If true, the parser will be initialized with the functions abs, sqrt, pow, root, rem, sign, exp, floor, ceil, round, truncate, log, ln, random, and trigonometric functions.</param>
-		/// <param name="loadPreDefinedOperators">If true, the parser will be initialized with the operators ^, %, :, /, *, -, +, >, &lt;, &#8805;, &#8804;, &#8800;, and =.</param>
-		/// <param name="loadPreDefinedVariables">If true, the parser will be initialized with the variables pi, tao, e, phi, major, minor, pitograd, and piofgrad.</param>
-		/// <param name="cultureInfo">The culture information to use when parsing expressions. If null, the parser will use the invariant culture.</param>
-		public MathParser(
-			bool loadPreDefinedFunctions = true,
-			bool loadPreDefinedOperators = true,
-			bool loadPreDefinedVariables = true,
-			CultureInfo cultureInfo = null)
+		public MathParser()
 		{
-			if (loadPreDefinedOperators)
+			operators = new Dictionary<string, Func<double, double, double>>
 			{
-				Operators = new Dictionary<string, Func<double, double, double>>
+				["^"] = Math.Pow,
+				["%"] = (a, b) => a % b,
+				["/"] = (a, b) =>
 				{
-					["^"] = Math.Pow,
-					["%"] = (a, b) => a % b,
-					["/"] = (a, b) =>
-					{
-						if (b != 0)
-							return a / b;
-						else if (a > 0)
-							return double.PositiveInfinity;
-						else if (a < 0)
-							return double.NegativeInfinity;
-						else
-							return double.NaN;
-					},
-					["*"] = (a, b) => a * b,
-					["-"] = (a, b) => a - b,
-					["+"] = (a, b) => a + b,
+					if (b != 0)
+						return a / b;
+					else if (a > 0)
+						return double.PositiveInfinity;
+					else if (a < 0)
+						return double.NegativeInfinity;
+					else
+						return double.NaN;
+				},
+				["*"] = (a, b) => a * b,
+				["-"] = (a, b) => a - b,
+				["+"] = (a, b) => a + b,
 
-					[">"] = (a, b) => a > b ? 1 : 0,
-					["<"] = (a, b) => a < b ? 1 : 0,
-					["" + GeqSign] = (a, b) => a > b || Math.Abs(a - b) < 0.00000001 ? 1 : 0,
-					["" + LeqSign] = (a, b) => a < b || Math.Abs(a - b) < 0.00000001 ? 1 : 0,
-					["" + NeqSign] = (a, b) => Math.Abs(a - b) < 0.00000001 ? 0 : 1,
-					["="] = (a, b) => Math.Abs(a - b) < 0.00000001 ? 1 : 0
-				};
-			}
-			else
+				[">"] = (a, b) => a > b ? 1 : 0,
+				["<"] = (a, b) => a < b ? 1 : 0,
+				["" + GeqSign] = (a, b) => a > b || Math.Abs(a - b) < 0.00000001 ? 1 : 0,
+				["" + LeqSign] = (a, b) => a < b || Math.Abs(a - b) < 0.00000001 ? 1 : 0,
+				["" + NeqSign] = (a, b) => Math.Abs(a - b) < 0.00000001 ? 0 : 1,
+				["="] = (a, b) => Math.Abs(a - b) < 0.00000001 ? 1 : 0
+			};
+
+			variables = new Dictionary<string, double>
 			{
-				Operators = new Dictionary<string, Func<double, double, double>>();
-			}
+				["pi"] = 3.14159265358979,
+				["tao"] = 6.28318530717959,
 
-			LocalFunctions = new Dictionary<string, Func<VariantList, double>>();
-			if (loadPreDefinedFunctions)
-			{
-				// TODO: e.g. LocalFunctions.Add("foo", inputs => Math.Abs(inputs[0]));
-			}
+				["e"] = 2.71828182845905,
+				["phi"] = 1.61803398874989,
+				["major"] = 0.61803398874989,
+				["minor"] = 0.38196601125011,
 
-			if (loadPreDefinedVariables)
-			{
-				LocalVariables = new Dictionary<string, double>
-				{
-					["pi"] = 3.14159265358979,
-					["tao"] = 6.28318530717959,
+				["pitograd"] = 57.2957795130823,
+				["piofgrad"] = 0.01745329251994
+			};
 
-					["e"] = 2.71828182845905,
-					["phi"] = 1.61803398874989,
-					["major"] = 0.61803398874989,
-					["minor"] = 0.38196601125011,
-
-					["pitograd"] = 57.2957795130823,
-					["piofgrad"] = 0.01745329251994
-				};
-			}
-			else
-			{
-				LocalVariables = new Dictionary<string, double>();
-			}
-
-			CultureInfo = cultureInfo ?? CultureInfo.InvariantCulture;
-
+			functions = new Dictionary<string, Func<VariantList, double>>();
 			factory = new FunctionFactory();
+
+			cultureInfo = CultureInfo.InvariantCulture;
 		}
+
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="fn"></param>
+		public void AddFunction(string name, Func<VariantList, double> fn)
+		{
+			if (!functions.ContainsKey(name))
+			{
+				functions.Add(name, fn);
+			}
+			else
+			{
+				functions[name] = fn;
+			}
+		}
+
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="fn"></param>
+		public void AddOperator(string name, Func<double, double, double> fn)
+		{
+			if (!operators.ContainsKey(name))
+			{
+				operators.Add(name, fn);
+			}
+			else
+			{
+				operators[name] = fn;
+			}
+		}
+
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="name"></param>
+		/// <returns></returns>
+		public double GetVariable(string name)
+		{
+			if (variables.ContainsKey(name))
+			{
+				return variables[name];
+			}
+
+			return double.NaN;
+		}
+
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="value"></param>
+		public void SetVariable(string name, double value)
+		{
+			if (!variables.ContainsKey(name))
+			{
+				variables.Add(name, value);
+			}
+			else
+			{
+				variables[name] = value;
+			}
+		}
+
 
 		/// <summary>
 		/// Parse and evaluate a mathematical expression.
@@ -185,44 +213,34 @@ namespace Mathos.Parser
 		public double Parse(string mathExpression)
 		{
 			var tokens = Lexer(mathExpression);
-			tokens = ReplaceVariables(tokens);
-			tokens = PreprocessCellLookups(tokens);
-			tokens = GetCellContents(tokens);
+
+			ReplaceVariables(tokens);
+
+			if (tokens.Exists(t => t.Equals(CountifFnName, StringComparison.CurrentCultureIgnoreCase)))
+			{
+				PreprocessCountifFn(tokens);
+			}
+
+			if (tokens.Exists(t => t.Equals(CellFnName, StringComparison.CurrentCultureIgnoreCase)))
+			{
+				PreprocessCellFn(tokens);
+			}
+
+			GetCellContents(tokens);
 			return MathParserLogic(tokens);
 		}
 
-		/// <summary>
-		/// Evaluate a mathematical expression in the form of tokens.
-		/// </summary>
-		/// <remarks>
-		/// This method does not evaluate variable declarations.
-		/// For a method that does, please use <see cref="ProgrammaticallyParse"/>.
-		/// </remarks>
-		/// <example>
-		/// <code>
-		/// using System.Diagnostics;
-		/// 
-		/// var parser = new MathParser(false, true, false);
-		/// var tokens = parser.GetTokens("2 + 2");
-		/// Debug.Assert(parser.Parse(tokens) == 4);
-		/// </code>
-		/// </example>
-		/// <param name="tokens">The math expression in tokens to parse and evaluate.</param>
-		/// <returns>Returns the result of executing the given math expression.</returns>
-		public double Parse(IReadOnlyCollection<string> tokens)
-		{
-			return MathParserLogic(ReplaceVariables(new List<string>(tokens)));
-		}
 
 		/// <summary>
-		/// Parse and evaluate a mathematical expression with comments and variable declarations taken into account.
+		/// Parse and evaluate a mathematical expression with comments and variable declarations 
+		/// taken into account.
 		/// </summary>
 		/// <remarks>
-		/// The syntax for declaring/editing a variable is either "let a = 0", "let a be 0", or "let a := 0" where
+		/// The syntax for declaring/editing a variable is either "let a = 0", "let a be 0", 
+		/// or "let a := 0" where
 		/// "let" is the keyword specified by <see cref="VariableDeclarator"/>.
 		/// 
 		/// This method evaluates comments and variable declarations.
-		/// For a method that doesn't, please use either <see cref="Parse(string)"/> or <see cref="Parse(IReadOnlyCollection{string})"/>.
 		/// </remarks>
 		/// <example>
 		/// <code>
@@ -235,10 +253,16 @@ namespace Mathos.Parser
 		/// </code>
 		/// </example>
 		/// <param name="mathExpression">The math expression to parse and evaluate.</param>
-		/// <param name="correctExpression">If true, attempt to correct any typos found in the expression.</param>
-		/// <param name="identifyComments">If true, treat "#" as a single-line comment and treat "#{" and "}#" as multi-line comments.</param>
+		/// <param name="correctExpression">
+		/// If true, attempt to correct any typos found in the expression.
+		/// </param>
+		/// <param name="identifyComments">
+		/// If true, treat "#" as a single-line comment and treat "#{" and "}#" as multi-line
+		/// comments.
+		/// </param>
 		/// <returns>Returns the result of executing the given math expression.</returns>
-		public double ProgrammaticallyParse(string mathExpression, bool correctExpression = true, bool identifyComments = true)
+		public double ProgrammaticallyParse(
+			string mathExpression, bool correctExpression = true, bool identifyComments = true)
 		{
 			if (identifyComments)
 			{
@@ -280,13 +304,13 @@ namespace Mathos.Parser
 
 				varValue = Parse(mathExpression);
 
-				if (LocalVariables.ContainsKey(varName))
+				if (variables.ContainsKey(varName))
 				{
-					LocalVariables[varName] = varValue;
+					variables[varName] = varValue;
 				}
 				else
 				{
-					LocalVariables.Add(varName, varValue);
+					variables.Add(varName, varValue);
 				}
 
 				return varValue;
@@ -304,39 +328,18 @@ namespace Mathos.Parser
 			varValue = Parse(mathExpression);
 			varName = varName.Replace(" ", "");
 
-			if (LocalVariables.ContainsKey(varName))
+			if (variables.ContainsKey(varName))
 			{
-				LocalVariables[varName] = varValue;
+				variables[varName] = varValue;
 			}
 			else
 			{
-				LocalVariables.Add(varName, varValue);
+				variables.Add(varName, varValue);
 			}
 
 			return varValue;
 		}
 
-		/// <summary>
-		/// Tokenize a mathematical expression.
-		/// </summary>
-		/// <remarks>
-		/// This method does not evaluate the expression.
-		/// For a method that does, please use one of the Parse methods.
-		/// </remarks>
-		/// <example>
-		/// <code>
-		/// using System.Diagnostics;
-		/// 
-		/// var parser = new MathParser(false, true, false);
-		/// parser.GetTokens("2 + 2");
-		/// </code>
-		/// </example>
-		/// <param name="mathExpression">The math expression to tokenize.</param>
-		/// <returns>Returns the tokens of the given math expression.</returns>
-		public IReadOnlyCollection<string> GetTokens(string mathExpression)
-		{
-			return Lexer(mathExpression);
-		}
 
 		#region Core
 
@@ -429,7 +432,8 @@ namespace Mathos.Parser
 				if (i + 1 < expr.Length &&
 					(ch == '-' || ch == '+') &&
 					char.IsDigit(expr[i + 1]) &&
-					(i == 0 || (tokens.Count > 0 && Operators.ContainsKey(tokens.Last())) || i - 1 > 0 && expr[i - 1] == '('))
+					(i == 0 || (tokens.Count > 0 &&
+						operators.ContainsKey(tokens.Last())) || i - 1 > 0 && expr[i - 1] == '('))
 				{
 					// if the above is true, then the token for that negative number will be "-1", not "-","1".
 					// to sum up, the above will be true if the minus sign is in front of the number, but
@@ -476,14 +480,14 @@ namespace Mathos.Parser
 		}
 
 
-		private List<string> ReplaceVariables(List<string> tokens)
+		private void ReplaceVariables(List<string> tokens)
 		{
 			// Variables replacement
 			for (var i = 0; i < tokens.Count; i++)
 			{
-				if (LocalVariables.Keys.Contains(tokens[i]))
+				if (variables.Keys.Contains(tokens[i]))
 				{
-					tokens[i] = LocalVariables[tokens[i]].ToString(CultureInfo);
+					tokens[i] = variables[tokens[i]].ToString(cultureInfo);
 				}
 				else if (
 					tokens.Count == 1 ||
@@ -504,12 +508,10 @@ namespace Mathos.Parser
 					}
 				}
 			}
-
-			return tokens;
 		}
 
 
-		private List<string> PreprocessCellLookups(List<string> tokens)
+		private void PreprocessCellFn(List<string> tokens)
 		{
 			var open = tokens.LastIndexOf("(");
 			while (open > 0) // leave room for "cell" fn token prior to "("
@@ -520,7 +522,7 @@ namespace Mathos.Parser
 					throw new CalculatorException($"No closing bracket/parenthesis. Token: {open}");
 				}
 
-				if (tokens[open - 1].Equals(CellLookupFnName, StringComparison.CurrentCultureIgnoreCase))
+				if (tokens[open - 1].Equals(CellFnName, StringComparison.CurrentCultureIgnoreCase))
 				{
 					var lparams = new List<string>();
 					var rparams = new List<string>();
@@ -543,26 +545,25 @@ namespace Mathos.Parser
 
 					if (commas != 1)
 					{
-						throw new CalculatorException("The cell function must have two parameters");
+						throw new CalculatorException(
+							$"The {CellFnName} function must have two parameters");
 					}
 
-					if (!LocalVariables.ContainsKey("col") || !LocalVariables.ContainsKey("row"))
+					if (!variables.ContainsKey("col") || !variables.ContainsKey("row"))
 					{
-						throw new CalculatorException("The cell function requires the col and row variables");
+						throw new CalculatorException(
+							$"The {CellFnName} function requires the col and row variables");
 					}
 
-					var currentCol = LocalVariables["col"] - 1; // 1-based to 0-based
-					var currentRow = LocalVariables["row"] - 1; // 1-based to 0-based
+					var currentCol = variables["col"];
+					var currentRow = variables["row"];
 
-					lparams.AddRange(new string[] { "+", ((int)currentCol).ToString() });
-					var col = (int)BasicArithmeticalExpression(lparams);
-
-					rparams.AddRange(new string[] { "+", ((int)currentRow).ToString() });
-					var row = BasicArithmeticalExpression(rparams);
+					var col = (int)currentCol + (int)BasicArithmeticalExpression(lparams);
+					var row = (int)currentRow + (int)BasicArithmeticalExpression(rparams);
 
 					var cellName = $"{CellIndexToLetters(col)}{row}";
 
-					tokens.RemoveRange(open - 1, close - open + 1);
+					tokens.RemoveRange(open - 1, close - open + 2);
 					tokens.Insert(open - 1, cellName);
 				}
 
@@ -571,14 +572,12 @@ namespace Mathos.Parser
 
 			for (var i = 0; i < tokens.Count; i++)
 			{
-				Debug.WriteLine($"... preproc[{i}] = [{tokens[i]}]");
+				Debug.WriteLine($"... precell[{i}] = [{tokens[i]}]");
 			}
-
-			return tokens;
 		}
 
 
-		private List<string> GetCellContents(List<string> tokens)
+		private void GetCellContents(List<string> tokens)
 		{
 			var pattern = new Regex(AddressPattern);
 
@@ -665,7 +664,8 @@ namespace Mathos.Parser
 				}
 				else
 				{
-					throw new FormatException("invalid cell range"); // ErrInvalidCellRange);
+					throw new FormatException(
+						$"invalid cell range {tokens[index - 1]}:{tokens[index + 1]}"); // ErrInvalidCellRange);
 				}
 
 				// replace token range with values
@@ -679,8 +679,58 @@ namespace Mathos.Parser
 
 				index = index < tokens.Count - 1 ? tokens.IndexOf(":", index + 1) : -1;
 			}
+		}
 
-			return tokens;
+
+		private void PreprocessCountifFn(List<string> tokens)
+		{
+			var open = tokens.LastIndexOf("(");
+			while (open > 0) // leave room for fn name token prior to "("
+			{
+				var close = tokens.IndexOf(")", open);
+				if (open >= close)
+				{
+					throw new CalculatorException($"No closing bracket/parenthesis. Token: {open}");
+				}
+
+				// is this the fn name we're looking for?
+				if (tokens[open - 1].Equals(CountifFnName, StringComparison.CurrentCultureIgnoreCase))
+				{
+					var last = tokens.LastIndexOf(",", close);
+					if (last > open)
+					{
+						var op = tokens[last - 1][0];
+						if (op == '>') tokens[last - 1] = "1";
+						else if (op == '<') tokens[last - 1] = "-1";
+						else if (op == '!') tokens[last - 1] = "3";
+						else
+						{
+							op = tokens[last + 1][0];
+							if (op == '>' || op == '<' || op == '!')
+							{
+								if (op == '>') tokens.Insert(last, "1");
+								else if (op == '<') tokens.Insert(last, "-1");
+								else if (op == '!') tokens.Insert(last, "3");
+								else tokens.Insert(last, "0");
+								tokens.Insert(last, ",");
+							}
+							else
+							{
+								// insert implied String.Equals
+								tokens.Insert(last, "0");
+								tokens.Insert(last, ",");
+							}
+						}
+					}
+				}
+
+				open = tokens.LastIndexOf("(", open - 1);
+			}
+
+			for (var i = 0; i < tokens.Count; i++)
+			{
+				Debug.WriteLine($"... precountif[{i}] = [{tokens[i]}]");
+			}
 		}
 
 
@@ -738,7 +788,7 @@ namespace Mathos.Parser
 
 				if (open >= close)
 				{
-					throw new ArithmeticException("No closing bracket/parenthesis. Token: " + open.ToString(CultureInfo));
+					throw new ArithmeticException("No closing bracket/parenthesis. Token: " + open.ToString(cultureInfo));
 				}
 
 				var subexpr = new List<string>();
@@ -752,9 +802,9 @@ namespace Mathos.Parser
 				var args = new List<double>();
 				var functionName = tokens[open == 0 ? 0 : open - 1];
 
-				// look for user-defined overrides first before finding built-in functions
-				var fn = LocalFunctions.Keys.Contains(functionName)
-					? LocalFunctions[functionName]
+				// looks for built-in overrides first before user-defined functions
+				var fn = functions.Keys.Contains(functionName)
+					? functions[functionName]
 					: factory.Find(functionName);
 
 				if (fn is not null)
@@ -780,8 +830,8 @@ namespace Mathos.Parser
 
 						// finally, passing the arguments to the given function
 						result = double.Parse(
-							fn(new VariantList(args)).ToString(CultureInfo),
-							CultureInfo);
+							fn(new VariantList(args)).ToString(cultureInfo),
+							cultureInfo);
 					}
 					else
 					{
@@ -793,7 +843,7 @@ namespace Mathos.Parser
 						{
 							result = double.Parse(
 								fn(new VariantList(BasicArithmeticalExpression(subexpr))
-							).ToString(CultureInfo), CultureInfo);
+							).ToString(cultureInfo), cultureInfo);
 						}
 					}
 				}
@@ -807,7 +857,7 @@ namespace Mathos.Parser
 				// when all the calculations have been done
 				// we replace the "opening bracket with the result"
 				// and removing the rest.
-				tokens[open] = result.ToString(CultureInfo);
+				tokens[open] = result.ToString(cultureInfo);
 				tokens.RemoveRange(open + 1, close - open);
 
 				if (fn is not null)
@@ -840,7 +890,7 @@ namespace Mathos.Parser
 			switch (tokens.Count)
 			{
 				case 1:
-					if (!double.TryParse(tokens[0], NumberStyles.Number, CultureInfo, out token0))
+					if (!double.TryParse(tokens[0], NumberStyles.Number, cultureInfo, out token0))
 					{
 						throw new CalculatorException("local variable " + tokens[0] + " is undefined");
 					}
@@ -853,7 +903,7 @@ namespace Mathos.Parser
 					{
 						var first = op == "+" ? "" : (tokens[1].Substring(0, 1) == "-" ? "" : "-");
 
-						if (!double.TryParse(first + tokens[1], NumberStyles.Number, CultureInfo, out token1))
+						if (!double.TryParse(first + tokens[1], NumberStyles.Number, cultureInfo, out token1))
 						{
 							throw new CalculatorException("local variable " + first + tokens[1] + " is undefined");
 						}
@@ -861,22 +911,22 @@ namespace Mathos.Parser
 						return token1;
 					}
 
-					if (!Operators.ContainsKey(op))
+					if (!operators.ContainsKey(op))
 					{
 						throw new CalculatorException("operator " + op + " is not defined");
 					}
 
-					if (!double.TryParse(tokens[1], NumberStyles.Number, CultureInfo, out token1))
+					if (!double.TryParse(tokens[1], NumberStyles.Number, cultureInfo, out token1))
 					{
 						throw new CalculatorException("local variable " + tokens[1] + " is undefined");
 					}
 
-					return Operators[op](0, token1);
+					return operators[op](0, token1);
 				case 0:
 					return 0;
 			}
 
-			foreach (var op in Operators)
+			foreach (var op in operators)
 			{
 				int opPlace;
 
@@ -884,7 +934,7 @@ namespace Mathos.Parser
 				{
 					double rhs;
 
-					if (!double.TryParse(tokens[opPlace + 1], NumberStyles.Number, CultureInfo, out rhs))
+					if (!double.TryParse(tokens[opPlace + 1], NumberStyles.Number, cultureInfo, out rhs))
 					{
 						throw new CalculatorException("local variable " + tokens[opPlace + 1] + " is undefined");
 					}
@@ -892,26 +942,26 @@ namespace Mathos.Parser
 					if (op.Key == "-" && opPlace == 0)
 					{
 						var result = op.Value(0.0, rhs);
-						tokens[0] = result.ToString(CultureInfo);
+						tokens[0] = result.ToString(cultureInfo);
 						tokens.RemoveRange(opPlace + 1, 1);
 					}
 					else
 					{
 						double lhs;
 
-						if (!double.TryParse(tokens[opPlace - 1], NumberStyles.Number, CultureInfo, out lhs))
+						if (!double.TryParse(tokens[opPlace - 1], NumberStyles.Number, cultureInfo, out lhs))
 						{
 							throw new CalculatorException("local variable " + tokens[opPlace - 1] + " is undefined");
 						}
 
 						var result = op.Value(lhs, rhs);
-						tokens[opPlace - 1] = result.ToString(CultureInfo);
+						tokens[opPlace - 1] = result.ToString(cultureInfo);
 						tokens.RemoveRange(opPlace, 2);
 					}
 				}
 			}
 
-			if (!double.TryParse(tokens[0], NumberStyles.Number, CultureInfo, out token0))
+			if (!double.TryParse(tokens[0], NumberStyles.Number, cultureInfo, out token0))
 			{
 				throw new CalculatorException("local variable " + tokens[0] + " is undefined");
 			}

@@ -7,17 +7,17 @@ namespace Mathos.Parser.Scripting
 {
 	internal class ScriptParser
 	{
-		public Dictionary<string, double> LocalVariables { get { return mathParser.LocalVariables; } }
-		public Dictionary<string, Func<double, double, double>> Operators { get { return mathParser.Operators; } }
-		public Dictionary<string, Func<VariantList, double>> LocalFunctions { get { return mathParser.LocalFunctions; } }
+		//public Dictionary<string, double> LocalVariables { get { return mathParser.variables; } }
+		//public Dictionary<string, Func<double, double, double>> Operators { get { return mathParser.Operators; } }
+		//public Dictionary<string, Func<VariantList, double>> LocalFunctions { get { return mathParser.LocalFunctions; } }
 		public IScriptParserLog Logger { get; set; }
 		public string LogFunctionName { get; set; } = "print";
 
 		private MathParser mathParser;
 		private BooleanParser booleanParser;
-		public ScriptParser(IScriptParserLog logger = null, bool loadPreDefinedFunctions = true, bool loadPreDefinedOperators = true, bool loadPreDefinedVariables = true, CultureInfo cultureInfo = null)
+		public ScriptParser(IScriptParserLog logger = null)
 		{
-			mathParser = new MathParser(loadPreDefinedFunctions, loadPreDefinedOperators, loadPreDefinedVariables, cultureInfo);
+			mathParser = new MathParser();
 			booleanParser = new BooleanParser(mathParser);
 			this.Logger = logger;
 			if (logger == null)
@@ -151,7 +151,9 @@ namespace Mathos.Parser.Scripting
 				{
 					if (!string.IsNullOrWhiteSpace(token))
 					{
-						joinedString += isString ? token : mathParser.ProgrammaticallyParse(token.Trim()).ToString(mathParser.CultureInfo);
+						joinedString += isString
+							? token
+							: mathParser.ProgrammaticallyParse(token.Trim()).ToString(CultureInfo.InvariantCulture);
 					}
 					token = "";
 					isString = !isString;
@@ -168,7 +170,9 @@ namespace Mathos.Parser.Scripting
 			}
 			if (!string.IsNullOrWhiteSpace(token))
 			{
-				joinedString += isString ? token : mathParser.ProgrammaticallyParse(token.Trim()).ToString(mathParser.CultureInfo);
+				joinedString += isString
+					? token
+					: mathParser.ProgrammaticallyParse(token.Trim()).ToString(CultureInfo.InvariantCulture);
 			}
 			Logger.Log(joinedString);
 		}

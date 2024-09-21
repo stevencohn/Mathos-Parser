@@ -8,6 +8,11 @@
 
 	internal class FunctionFactory
 	{
+		private const int CountGt = 1;
+		private const int CountLt = -1;
+		private const int CountNe = 3;
+		private const int CountEq = 0;
+
 		private readonly Dictionary<string, Func<VariantList, double>> functions;
 
 		public FunctionFactory()
@@ -40,9 +45,6 @@
 				"average" => inputs => Average(inputs.Assert(D, D).ToDoubleArray()),
 				"ceil" => inputs => Math.Ceiling(inputs.Assert(D)[0]),
 				"ceiling" => inputs => Math.Ceiling(inputs.Assert(D)[0]),
-				/*
-				"cell" => new MathFunction("cell", (p) => Cell(p), true),
-				*/
 				"cos" => inputs => Math.Cos(inputs.Assert(D)[0]),
 				"cosh" => inputs => Math.Cosh(inputs.Assert(D)[0]),
 				"countif" => inputs => CountIf(inputs),
@@ -93,89 +95,36 @@
 		}
 
 
-		/*
-		private double Cell(double[] p)
-		{
-			// user may specify one or two parameters (colOffset) or (colOffset,Rowoffset)
-			if (p.Length < 1 || p.Length > 2)
-				throw new Exception("cell function requires one or two parameters");
-
-			// user specifies 1-based row and col but we need 0-based indexes
-			var c = (int)p[0] - 1 + colIndex;
-			var r = (int)p[1] - 1 + rowIndex;
-
-			if (localvar)
-
-			if (c < 0 || c > table.ColumnCount - 1 ||
-				r < 0 || r > table.RowCount - 1)
-			{
-				throw new FormulaException(
-					"cell function col/row indexes are out of range\n" +
-					$"cell(coff:{colOffset}, roff:{rowOffset}, col:{col}, row:{row}) -> " +
-					$"c:{c} r:{r}");
-			}
-
-			var cell = table[r][c];
-			if (cell is not null && double.TryParse(cell.GetText(), out var value))
-			{
-				Logger.Current.Verbose(
-					$"fn cell(coff:{colOffset}, roff:{rowOffset}, Col:{col}, row:{row}) " +
-					$"= {(double)cell.Value}");
-
-				return value;
-			}
-
-			// assumption
-			return 0.0;
-		}
-		*/
-
-
 		private static double CountIf(VariantList p)
 		{
-			if (p.Count < 2)
+			if (p.Count < 3)
+			{
+				// user specifies two parameters (range,opMatch) but preprocessing expands
+				// that to three parameters (range,op,match) so test for three but report two!
 				throw new CalculatorException($"countif function requires at least two parameters");
+			}
 
 			var array = p.ToArray();
 
-			// values are items 0..last-1, ignore empty cells
-			var values = array.Take(p.Count - 1)
+			// values are items 0..last-2, ignore empty cells
+			var values = array.Take(p.Count - 2)
 				.Where(p => p.VariantType != VariantType.String || p.StringValue.Length > 0);
 
-			// the countif testcase is always the last parameter
-			var test = array[array.Length - 1];
+			// the operator is second (<, >, or !)
+			var oper = (int)array[array.Length - 2].DoubleValue;
 
-			var oper = test.ToString()[0];
-			var result = 0;
-			string s;
-			if (oper == '<' || oper == '>' || oper == '!')
-			{
-				s = test.ToString().Substring(1);
-				if (oper == '>') result = 1;
-				else if (oper == '<') result = -1;
-			}
-			else
-			{
-				s = test.ToString();
-			}
+			// the match pattern is always the last parameter
+			var match = array[array.Length - 1];
 
-			Variant expected;
-			if (double.TryParse(s, out var d)) // Culture-specific user input?!
+			var result = oper switch
 			{
-				expected = new Variant(d);
-			}
-			else if (bool.TryParse(s, out bool b))
-			{
-				expected = new Variant(b);
-			}
-			else
-			{
-				expected = new Variant(s);
-			}
+				CountGt => values.Count(v => v.CompareTo(match) > 0),
+				CountLt => values.Count(v => v.CompareTo(match) < 0),
+				CountNe => values.Count(v => v.CompareTo(match) != 0),
+				_ => values.Count(v => v.CompareTo(match) == 0)
+			};
 
-			return oper == '!'
-				? values.Count(v => v.CompareTo(expected) != 0)
-				: values.Count(v => v.CompareTo(expected) == result);
+			return result;
 		}
 
 
