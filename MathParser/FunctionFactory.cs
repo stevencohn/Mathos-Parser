@@ -8,10 +8,7 @@
 
 	internal class FunctionFactory
 	{
-		private const int CountGt = 1;
-		private const int CountLt = -1;
-		private const int CountNe = 3;
-		private const int CountEq = 0;
+		private const int CountIfNe = 3;
 
 		private readonly Dictionary<string, Func<VariantList, double>> functions;
 
@@ -101,7 +98,7 @@
 			{
 				// user specifies two parameters (range,opMatch) but preprocessing expands
 				// that to three parameters (range,op,match) so test for three but report two!
-				throw new CalculatorException($"countif function requires at least two parameters");
+				throw new CalculatorException($"countif function requires two parameters");
 			}
 
 			var array = p.ToArray();
@@ -110,21 +107,15 @@
 			var values = array.Take(p.Count - 2)
 				.Where(p => p.VariantType != VariantType.String || p.StringValue.Length > 0);
 
-			// the operator is second (<, >, or !)
-			var oper = (int)array[array.Length - 2].DoubleValue;
+			// result is a numerical reprepsentation of the op as second param (<, >, or !)
+			var result = (int)array[array.Length - 2].DoubleValue;
 
 			// the match pattern is always the last parameter
 			var match = array[array.Length - 1];
 
-			var result = oper switch
-			{
-				CountGt => values.Count(v => v.CompareTo(match) > 0),
-				CountLt => values.Count(v => v.CompareTo(match) < 0),
-				CountNe => values.Count(v => v.CompareTo(match) != 0),
-				_ => values.Count(v => v.CompareTo(match) == 0)
-			};
-
-			return result;
+			return result == CountIfNe
+				? values.Count(v => v.CompareTo(match) != 0)
+				: values.Count(v => v.CompareTo(match) == result);
 		}
 
 

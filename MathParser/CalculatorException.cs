@@ -3,13 +3,17 @@
 	using System;
 
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Critical Code Smell", "S3871:Exception types should be public")]
+
 	internal sealed class CalculatorException : Exception
 	{
+		private const string UnknownPosition = "<position:unknown>";
 
 		public CalculatorException(string message)
 			: base(message)
 		{
-			Position = "?";
+			Position = UnknownPosition;
 		}
 
 		public CalculatorException(string message, string position)
@@ -21,7 +25,7 @@
 		public CalculatorException(string message, Exception innerException)
 			: base(message, innerException)
 		{
-			Position = "?";
+			Position = UnknownPosition;
 		}
 
 		public string Position { private set; get; }

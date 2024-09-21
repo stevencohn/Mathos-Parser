@@ -61,9 +61,48 @@ namespace Mathos.Parser.Test
 			Assert.AreEqual(123 * 9, parser.Parse("sum(B2:cell(0,tablerows-1))"));
 			// sum C1:E1
 			Assert.AreEqual(123 * 4, parser.Parse("sum(C1:cell(tablecols-1,0))"));
+		}
 
-			Assert.AreEqual(3, parser.Parse("countif(A1:A3, 123)"));
-			Assert.AreEqual(3, parser.Parse("countif(A1:A3, > 122)"));
+
+		[TestMethod]
+		public void Tables_CountIf()
+		{
+			var parser = new MathParser();
+
+			parser.SetVariable("tablecols", 5);
+			parser.SetVariable("tablerows", 10);
+
+			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
+			{
+				var col = args.Name[0];
+				var row = int.Parse(args.Name.Substring(1));
+
+				if (col == 'A')
+				{
+					args.Value = row.ToString();
+				}
+				else if (col == 'B')
+				{
+					args.Value = (row % 3).ToString();
+				}
+				else if (col == 'C')
+				{
+					args.Value = row < 5 ? "abc" : "xyz";
+				}
+				else
+				{
+					args.Value = row % 2 == 1 ? "True" : "False";
+				}
+
+				Debug.WriteLine($"GetCellValue({args.Name}) => [{args.Value}]");
+			};
+
+			Assert.AreEqual(1, parser.Parse("countif(A1:A3, 2)"));
+			Assert.AreEqual(4, parser.Parse("countif(B1:B10, 1)"));
+			Assert.AreEqual(6, parser.Parse("countif(B1:B10, !1)"));
+			Assert.AreEqual(4, parser.Parse("countif(A1:A10, < 5)"));
+
+			Assert.AreEqual(5, parser.Parse("countif(C1:C10, !abc)"));
 		}
 
 

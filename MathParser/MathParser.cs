@@ -699,27 +699,21 @@ namespace Mathos.Parser
 					var last = tokens.LastIndexOf(",", close);
 					if (last > open)
 					{
-						var op = tokens[last - 1][0];
-						if (op == '>') tokens[last - 1] = "1";
-						else if (op == '<') tokens[last - 1] = "-1";
-						else if (op == '!') tokens[last - 1] = "3";
+						var op = tokens[last + 1];
+						// is there an explicit operator?
+						if (op == ">" || op == "<" || op == "!")
+						{
+							if (op == ">") tokens[last + 1] = "1";
+							else if (op == "<") tokens[last + 1] = "-1";
+							else if (op == "!") tokens[last + 1] = "3";
+
+							tokens.Insert(last + 2, ",");
+						}
 						else
 						{
-							op = tokens[last + 1][0];
-							if (op == '>' || op == '<' || op == '!')
-							{
-								if (op == '>') tokens.Insert(last, "1");
-								else if (op == '<') tokens.Insert(last, "-1");
-								else if (op == '!') tokens.Insert(last, "3");
-								else tokens.Insert(last, "0");
-								tokens.Insert(last, ",");
-							}
-							else
-							{
-								// insert implied String.Equals
-								tokens.Insert(last, "0");
-								tokens.Insert(last, ",");
-							}
+							// convert implicit equals to explicit
+							tokens.Insert(last, "0");
+							tokens.Insert(last, ",");
 						}
 					}
 				}
