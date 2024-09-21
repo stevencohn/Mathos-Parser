@@ -11,68 +11,68 @@ namespace Mathos.Parser.Test
 		[TestMethod]
 		public void BasicArithmetic()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(7, parser.Parse("5 + 2"));
-			Assert.AreEqual(11, parser.Parse("5 + 2 * 3"));
-			Assert.AreEqual(17, parser.Parse("27 - 3 * 3 + 1 - 4 / 2"));
-			Assert.AreEqual(282429536481, parser.Parse("(27 ^ 2) ^ 4"));
+			Assert.AreEqual(7, calculator.Compute("5 + 2"));
+			Assert.AreEqual(11, calculator.Compute("5 + 2 * 3"));
+			Assert.AreEqual(17, calculator.Compute("27 - 3 * 3 + 1 - 4 / 2"));
+			Assert.AreEqual(282429536481, calculator.Compute("(27 ^ 2) ^ 4"));
 		}
 
 		[TestMethod]
 		public void Tables()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.SetVariable("tablecols", 5);
-			parser.SetVariable("tablerows", 10);
+			calculator.SetVariable("tablecols", 5);
+			calculator.SetVariable("tablerows", 10);
 
-			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
+			calculator.GetCellValue += (object sender, GetCellValueEventArgs args) =>
 			{
 				args.Value = 123.ToString();
 				Debug.WriteLine($"GetCellValue({args.Name}) => [{args.Value}]");
 			};
 
-			Assert.AreEqual(123, parser.Parse("a1"));
-			Assert.AreEqual(125, parser.Parse("A1 + 2"));
+			Assert.AreEqual(123, calculator.Compute("a1"));
+			Assert.AreEqual(125, calculator.Compute("A1 + 2"));
 
-			Assert.AreEqual(7, parser.Parse("tablecols + 2"));
+			Assert.AreEqual(7, calculator.Compute("tablecols + 2"));
 
 			// current cell at bottom of A col
-			parser.SetVariable("col", 1);
-			parser.SetVariable("row", 10);
+			calculator.SetVariable("col", 1);
+			calculator.SetVariable("row", 10);
 			// sum first three rows
-			Assert.AreEqual(123 * 3, parser.Parse("sum(A1:A3)"));
+			Assert.AreEqual(123 * 3, calculator.Compute("sum(A1:A3)"));
 			// sum A1:A9 - all rows except last row (current cell)
-			Assert.AreEqual(123 * 9, parser.Parse("sum(A1:cell(0,-1))"));
+			Assert.AreEqual(123 * 9, calculator.Compute("sum(A1:cell(0,-1))"));
 
 			// current cell at A4
-			parser.SetVariable("col", 1);
-			parser.SetVariable("row", 4);
+			calculator.SetVariable("col", 1);
+			calculator.SetVariable("row", 4);
 			// sum A1:A3
-			Assert.AreEqual(123 * 3, parser.Parse("sum(A1:cell(0,-1))"));
+			Assert.AreEqual(123 * 3, calculator.Compute("sum(A1:cell(0,-1))"));
 
 			// current cell at B1
-			parser.SetVariable("col", 2);
-			parser.SetVariable("row", 1);
+			calculator.SetVariable("col", 2);
+			calculator.SetVariable("row", 1);
 			// sum B2:B3
-			Assert.AreEqual(123 * 2, parser.Parse("sum(B2:cell(0,2))"));
+			Assert.AreEqual(123 * 2, calculator.Compute("sum(B2:cell(0,2))"));
 			// sum B2:B9
-			Assert.AreEqual(123 * 9, parser.Parse("sum(B2:cell(0,tablerows-1))"));
+			Assert.AreEqual(123 * 9, calculator.Compute("sum(B2:cell(0,tablerows-1))"));
 			// sum C1:E1
-			Assert.AreEqual(123 * 4, parser.Parse("sum(C1:cell(tablecols - 1, 0))"));
+			Assert.AreEqual(123 * 4, calculator.Compute("sum(C1:cell(tablecols - 1, 0))"));
 		}
 
 
 		[TestMethod]
 		public void Tables_CountIf()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.SetVariable("tablecols", 5);
-			parser.SetVariable("tablerows", 10);
+			calculator.SetVariable("tablecols", 5);
+			calculator.SetVariable("tablerows", 10);
 
-			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
+			calculator.GetCellValue += (object sender, GetCellValueEventArgs args) =>
 			{
 				var col = args.Name[0];
 				var row = int.Parse(args.Name.Substring(1));
@@ -97,109 +97,109 @@ namespace Mathos.Parser.Test
 				Debug.WriteLine($"GetCellValue({args.Name}) => [{args.Value}]");
 			};
 
-			Assert.AreEqual(1, parser.Parse("countif(A1:A3, 1 + 1)"));
-			Assert.AreEqual(4, parser.Parse("countif(B1:B10, 1)"));
-			Assert.AreEqual(6, parser.Parse("countif(B1:B10, !1)"));
-			Assert.AreEqual(4, parser.Parse("countif(A1:A10, < A5)"));
-			Assert.AreEqual(5, parser.Parse("countif(D1:D10, true)"));
-			Assert.AreEqual(6, parser.Parse("countif(C1:C10, !abc)"));
+			Assert.AreEqual(1, calculator.Compute("countif(A1:A3, 1 + 1)"));
+			Assert.AreEqual(4, calculator.Compute("countif(B1:B10, 1)"));
+			Assert.AreEqual(6, calculator.Compute("countif(B1:B10, !1)"));
+			Assert.AreEqual(4, calculator.Compute("countif(A1:A10, < A5)"));
+			Assert.AreEqual(5, calculator.Compute("countif(D1:D10, true)"));
+			Assert.AreEqual(6, calculator.Compute("countif(C1:C10, !abc)"));
 		}
 
 
 		[TestMethod]
 		public void AdvancedArithmetic()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(30, parser.Parse("3(7+3)"));
-			Assert.AreEqual(20, parser.Parse("(2+3)(3+1)"));
+			Assert.AreEqual(30, calculator.Compute("3(7+3)"));
+			Assert.AreEqual(20, calculator.Compute("(2+3)(3+1)"));
 		}
 
 		[TestMethod]
 		public void DivideByZero()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(double.PositiveInfinity, parser.Parse("5 / 0"));
-			Assert.AreEqual(double.NegativeInfinity, parser.Parse("(-30) / 0"));
-			Assert.AreEqual(double.NaN, parser.Parse("0 / 0"));
+			Assert.AreEqual(double.PositiveInfinity, calculator.Compute("5 / 0"));
+			Assert.AreEqual(double.NegativeInfinity, calculator.Compute("(-30) / 0"));
+			Assert.AreEqual(double.NaN, calculator.Compute("0 / 0"));
 
-			//Assert.AreEqual(double.PositiveInfinity, parser.Parse("5 : 0"));
-			//Assert.AreEqual(double.NegativeInfinity, parser.Parse("(-30) : 0"));
-			//Assert.AreEqual(double.NaN, parser.Parse("0 : 0"));
+			//Assert.AreEqual(double.PositiveInfinity, calculator.Parse("5 : 0"));
+			//Assert.AreEqual(double.NegativeInfinity, calculator.Parse("(-30) : 0"));
+			//Assert.AreEqual(double.NaN, calculator.Parse("0 : 0"));
 		}
 
 		[TestMethod]
 		public void ConditionalStatements()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(1, parser.Parse("2 + 3 = 1 + 4"));
-			Assert.AreEqual(1, parser.Parse("3 + 2 > 2 - 1"));
-			Assert.AreEqual(1, parser.Parse("(2+3)(3+1) < 50 - 20"));
+			Assert.AreEqual(1, calculator.Compute("2 + 3 = 1 + 4"));
+			Assert.AreEqual(1, calculator.Compute("3 + 2 > 2 - 1"));
+			Assert.AreEqual(1, calculator.Compute("(2+3)(3+1) < 50 - 20"));
 
-			Assert.AreEqual(0, parser.Parse("2 + 2 = 22"));
-			Assert.AreEqual(0, parser.Parse("(2+3)(3+1) > 50 - 20"));
-			Assert.AreEqual(0, parser.Parse("100 < 10"));
+			Assert.AreEqual(0, calculator.Compute("2 + 2 = 22"));
+			Assert.AreEqual(0, calculator.Compute("(2+3)(3+1) > 50 - 20"));
+			Assert.AreEqual(0, calculator.Compute("100 < 10"));
 
-			Assert.AreEqual(1, parser.Parse("2.5 <= 3"));
-			Assert.AreEqual(1, parser.Parse("(2+3)(3+1) <= 50 - 20"));
+			Assert.AreEqual(1, calculator.Compute("2.5 <= 3"));
+			Assert.AreEqual(1, calculator.Compute("(2+3)(3+1) <= 50 - 20"));
 
-			Assert.AreEqual(0, parser.Parse("100 <= 10"));
-			Assert.AreEqual(0, parser.Parse("(2+3)(3+1) >= 50 - 20"));
+			Assert.AreEqual(0, calculator.Compute("100 <= 10"));
+			Assert.AreEqual(0, calculator.Compute("(2+3)(3+1) >= 50 - 20"));
 		}
 
 		[TestMethod]
 		public void ProgramicallyAddVariables()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.ProgrammaticallyParse("let a = 2pi");
-			Assert.AreEqual(parser.GetVariable("pi") * 2, parser.Parse("a"), 0.00000000000001);
+			calculator.ProgrammaticallyParse("let a = 2pi");
+			Assert.AreEqual(calculator.GetVariable("pi") * 2, calculator.Compute("a"), 0.00000000000001);
 
-			parser.ProgrammaticallyParse("b := 20");
-			Assert.AreEqual(20, parser.Parse("b"));
+			calculator.ProgrammaticallyParse("b := 20");
+			Assert.AreEqual(20, calculator.Compute("b"));
 
-			parser.ProgrammaticallyParse("let c be 25 + 2(2+3)");
-			Assert.AreEqual(35, parser.Parse("c"));
+			calculator.ProgrammaticallyParse("let c be 25 + 2(2+3)");
+			Assert.AreEqual(35, calculator.Compute("c"));
 
-			parser.VariableDeclarator = "dim";
-			parser.ProgrammaticallyParse("dim d = 5 ^3");
-			Assert.AreEqual(125, parser.Parse("d"));
+			calculator.VariableDeclarator = "dim";
+			calculator.ProgrammaticallyParse("dim d = 5 ^3");
+			Assert.AreEqual(125, calculator.Compute("d"));
 		}
 
 		[TestMethod]
 		public void CustomFunctions()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.AddFunction("timesTwo", inputs => inputs[0] * 2);
-			Assert.AreEqual(6, parser.Parse("timesTwo(3)"));
-			Assert.AreEqual(42, parser.Parse("timesTwo((2+3)(3+1) + 1)"));
+			calculator.AddFunction("timesTwo", inputs => inputs[0] * 2);
+			Assert.AreEqual(6, calculator.Compute("timesTwo(3)"));
+			Assert.AreEqual(42, calculator.Compute("timesTwo((2+3)(3+1) + 1)"));
 
-			parser.AddFunction("square", inputs => inputs[0] * inputs[0]);
-			Assert.AreEqual(16, parser.Parse("square(4)"));
+			calculator.AddFunction("square", inputs => inputs[0] * inputs[0]);
+			Assert.AreEqual(16, calculator.Compute("square(4)"));
 
-			parser.AddFunction("cube", inputs => inputs[0] * inputs[0] * inputs[0]);
-			Assert.AreEqual(8, parser.Parse("cube(2)"));
+			calculator.AddFunction("cube", inputs => inputs[0] * inputs[0] * inputs[0]);
+			Assert.AreEqual(8, calculator.Compute("cube(2)"));
 
-			parser.AddFunction("constF", inputs => 12);
-			Assert.AreEqual(12, parser.Parse("constF()"));
-			Assert.AreEqual(144, parser.Parse("constF() * constF()"));
+			calculator.AddFunction("constF", inputs => 12);
+			Assert.AreEqual(12, calculator.Compute("constF()"));
+			Assert.AreEqual(144, calculator.Compute("constF() * constF()"));
 
-			parser.AddFunction("argCount", inputs => inputs.Count);
-			Assert.AreEqual(0, parser.Parse("argCount()"));
-			Assert.AreEqual(1, parser.Parse("argCount(1)"));
-			Assert.AreEqual(2, parser.Parse("argCount(argCount(1), -5)"));
-			Assert.AreEqual(2, parser.Parse("argCount(argCount(1, 0), argCount())"));
+			calculator.AddFunction("argCount", inputs => inputs.Count);
+			Assert.AreEqual(0, calculator.Compute("argCount()"));
+			Assert.AreEqual(1, calculator.Compute("argCount(1)"));
+			Assert.AreEqual(2, calculator.Compute("argCount(argCount(1), -5)"));
+			Assert.AreEqual(2, calculator.Compute("argCount(argCount(1, 0), argCount())"));
 		}
 
 		//[TestMethod]
 		//public void CustomFunctionsWithSeveralArguments()
 		//{
-		//	var parser = new MathParser(false);
+		//	var calculator = new MathParser(false);
 
-		//	parser.LocalFunctions.Add("log", delegate (double[] input)
+		//	calculator.LocalFunctions.Add("log", delegate (double[] input)
 		//	{
 		//		switch (input.Length)
 		//		{
@@ -212,19 +212,19 @@ namespace Mathos.Parser.Test
 		//		}
 		//	});
 
-		//	Assert.AreEqual(0.301029996, parser.Parse("log(2)"), 0.000000001);
-		//	Assert.AreEqual(0.630929754, parser.Parse("log(2,3)"), 0.000000001);
+		//	Assert.AreEqual(0.301029996, calculator.Parse("log(2)"), 0.000000001);
+		//	Assert.AreEqual(0.630929754, calculator.Parse("log(2,3)"), 0.000000001);
 		//}
 
 		[TestMethod]
 		[ExpectedException(typeof(CalculatorException))]
 		public void UndefinedVariableException()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
 			try
 			{
-				parser.ProgrammaticallyParse("unknownvar * 5");
+				calculator.ProgrammaticallyParse("unknownvar * 5");
 			}
 			catch (Exception e)
 			{
@@ -238,11 +238,11 @@ namespace Mathos.Parser.Test
 		[ExpectedException(typeof(CalculatorException))]
 		public void UndefinedOperatorException()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
 			try
 			{
-				parser.ProgrammaticallyParse("unknownoperator(5)");
+				calculator.ProgrammaticallyParse("unknownoperator(5)");
 			}
 			catch (Exception e)
 			{
@@ -255,66 +255,66 @@ namespace Mathos.Parser.Test
 		[TestMethod]
 		public void NegativeNumbers()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(0, parser.Parse("-1+1"));
-			Assert.AreEqual(1, parser.Parse("--1"));
-			Assert.AreEqual(-2, parser.Parse("-2"));
-			Assert.AreEqual(-2, parser.Parse("(-2)"));
-			// Assert.AreEqual(2, parser.Parse("-(-2)")); TODO: Fix
-			Assert.AreEqual(4, parser.Parse("(-2)(-2)"));
-			Assert.AreEqual(-3, parser.Parse("-(3+2+1+6)/4"));
+			Assert.AreEqual(0, calculator.Compute("-1+1"));
+			Assert.AreEqual(1, calculator.Compute("--1"));
+			Assert.AreEqual(-2, calculator.Compute("-2"));
+			Assert.AreEqual(-2, calculator.Compute("(-2)"));
+			// Assert.AreEqual(2, calculator.Parse("-(-2)")); TODO: Fix
+			Assert.AreEqual(4, calculator.Compute("(-2)(-2)"));
+			Assert.AreEqual(-3, calculator.Compute("-(3+2+1+6)/4"));
 
-			parser.SetVariable("x", 50);
+			calculator.SetVariable("x", 50);
 
-			Assert.AreEqual(-100, parser.Parse("-x - x"));
-			Assert.AreEqual(-75, parser.Parse("-x * 1.5"));
+			Assert.AreEqual(-100, calculator.Compute("-x - x"));
+			Assert.AreEqual(-75, calculator.Compute("-x * 1.5"));
 		}
 
 		[TestMethod]
 		public void Trigonometry()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(Math.Cos(32) + 3, parser.Parse("cos(32) + 3"));
+			Assert.AreEqual(Math.Cos(32) + 3, calculator.Compute("cos(32) + 3"));
 		}
 
 		[TestMethod]
 		public void CustomizeOperators()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.AddOperator("$", (a, b) => a * 2 + b * 3);
+			calculator.AddOperator("$", (a, b) => a * 2 + b * 3);
 
-			Assert.AreEqual(3 * 2 + 3 * 2, parser.Parse("3 $ 2"));
+			Assert.AreEqual(3 * 2 + 3 * 2, calculator.Compute("3 $ 2"));
 		}
 
 		[TestMethod]
 		public void DoubleOperations()
 		{
-			var parserDefault = new MathParser();
+			var parserDefault = new Calculator();
 
 			Assert.AreEqual(
 				double.Parse("0.055", CultureInfo.InvariantCulture),
-				parserDefault.Parse("-0.245 + 0.3"));
+				parserDefault.Compute("-0.245 + 0.3"));
 		}
 
 		[TestMethod]
 		public void ExecutionTime()
 		{
 			var timer = new Stopwatch();
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.Parse("5+2*3*1+2((1-2)(2-3))*-1"); // Warm-up
+			calculator.Compute("5+2*3*1+2((1-2)(2-3))*-1"); // Warm-up
 
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 
 			timer.Start();
 
-			parser.Parse("5+2");
-			parser.Parse("5+2*3*1+2((1-2)(2-3))");
-			parser.Parse("5+2*3*1+2((1-2)(2-3))*-1");
+			calculator.Compute("5+2");
+			calculator.Compute("5+2*3*1+2((1-2)(2-3))");
+			calculator.Compute("5+2*3*1+2((1-2)(2-3))*-1");
 
 			timer.Stop();
 
@@ -324,54 +324,54 @@ namespace Mathos.Parser.Test
 		[TestMethod]
 		public void BuiltInFunctions()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(21, parser.Parse("round(21.333333333333)"));
-			Assert.AreEqual(1, parser.Parse("pow(2,0)"));
+			Assert.AreEqual(21, calculator.Compute("round(21.333333333333)"));
+			Assert.AreEqual(1, calculator.Compute("pow(2,0)"));
 		}
 
 		[TestMethod]
 		[ExpectedException(typeof(ArithmeticException))]
 		public void ExceptionCatching()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.Parse("(-1");
-			parser.Parse("rem(20,1,,,,)");
+			calculator.Compute("(-1");
+			calculator.Compute("rem(20,1,,,,)");
 		}
 
 		[TestMethod]
 		public void StrangeStuff()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.AddOperator("times", (x, y) => x * y);
-			parser.AddOperator("dividedby", (x, y) => x / y);
-			parser.AddOperator("plus", (x, y) => x + y);
-			parser.AddOperator("minus", (x, y) => x - y);
+			calculator.AddOperator("times", (x, y) => x * y);
+			calculator.AddOperator("dividedby", (x, y) => x / y);
+			calculator.AddOperator("plus", (x, y) => x + y);
+			calculator.AddOperator("minus", (x, y) => x - y);
 
-			Debug.WriteLine(parser.Parse(
+			Debug.WriteLine(calculator.Compute(
 				"5 plus 3 dividedby 2 times 3").ToString(CultureInfo.InvariantCulture));
 		}
 
 		[TestMethod]
 		public void TestLongExpression()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(2, parser.Parse("4^2-2*3^2+4"));
+			Assert.AreEqual(2, calculator.Compute("4^2-2*3^2+4"));
 		}
 
 		//[TestMethod]
 		//public void SpeedTests()
 		//{
-		//	var parser = new MathParser();
+		//	var calculator = new MathParser();
 
-		//	parser.SetVariable("x", 10);
+		//	calculator.SetVariable("x", 10);
 
-		//	var list = parser.GetTokens("(3x+2)");
-		//	var time = BenchmarkUtil.Benchmark(() => parser.Parse("(3x+2)"), 25000);
-		//	var time2 = BenchmarkUtil.Benchmark(() => parser.Parse(list), 25000);
+		//	var list = calculator.GetTokens("(3x+2)");
+		//	var time = BenchmarkUtil.Benchmark(() => calculator.Parse("(3x+2)"), 25000);
+		//	var time2 = BenchmarkUtil.Benchmark(() => calculator.Parse(list), 25000);
 
 		//	Assert.IsTrue(time >= time2);
 		//}
@@ -379,23 +379,23 @@ namespace Mathos.Parser.Test
 		//[TestMethod]
 		//public void DetailedSpeedTestWithOptimization()
 		//{
-		//	var parser = new MathParser();
+		//	var calculator = new MathParser();
 
-		//	parser.SetVariable("x", 5);
+		//	calculator.SetVariable("x", 5);
 
 		//	var expr = "(3x+2)(2(2x+1))";
 
 		//	const int itr = 3000;
-		//	var creationTimeAndTokenization = BenchmarkUtil.Benchmark(() => parser.GetTokens(expr), 1);
-		//	var tokens = parser.GetTokens(expr);
+		//	var creationTimeAndTokenization = BenchmarkUtil.Benchmark(() => calculator.GetTokens(expr), 1);
+		//	var tokens = calculator.GetTokens(expr);
 
-		//	var parsingTime = BenchmarkUtil.Benchmark(() => parser.Parse(tokens), itr);
+		//	var parsingTime = BenchmarkUtil.Benchmark(() => calculator.Parse(tokens), itr);
 		//	var totalTime = creationTimeAndTokenization + parsingTime;
 
 		//	Console.WriteLine("Parsing Time: " + parsingTime);
 		//	Console.WriteLine("Total Time: " + totalTime);
 
-		//	var parsingTime2 = BenchmarkUtil.Benchmark(() => parser.Parse(expr), itr);
+		//	var parsingTime2 = BenchmarkUtil.Benchmark(() => calculator.Parse(expr), itr);
 
 		//	Console.WriteLine("Parsing Time 2: " + parsingTime2);
 		//	Console.WriteLine("Total Time: " + parsingTime2);
@@ -404,14 +404,14 @@ namespace Mathos.Parser.Test
 		[TestMethod]
 		public void DetailedSpeedTestWithoutOptimization()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			parser.SetVariable("x", 5);
+			calculator.SetVariable("x", 5);
 
 			var expr = "(3x+2)(2(2x+1))";
 			const int itr = 50;
 
-			var parsingTime = BenchmarkUtil.Benchmark(() => parser.Parse(expr), itr);
+			var parsingTime = BenchmarkUtil.Benchmark(() => calculator.Compute(expr), itr);
 
 			Console.WriteLine("Parsing Time: " + parsingTime);
 			Console.WriteLine("Total Time: " + parsingTime);
@@ -420,30 +420,30 @@ namespace Mathos.Parser.Test
 		[TestMethod]
 		public void CommaPiBug()
 		{
-			var parser = new MathParser();
-			var result = parser.Parse("pi");
+			var calculator = new Calculator();
+			var result = calculator.Compute("pi");
 
-			Assert.AreEqual(result, parser.GetVariable("pi"), 0.00000000000001);
+			Assert.AreEqual(result, calculator.GetVariable("pi"), 0.00000000000001);
 		}
 
 		[TestMethod]
 		public void NumberNotations()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(0.0005, parser.Parse("5 * 10^-4"));
+			Assert.AreEqual(0.0005, calculator.Compute("5 * 10^-4"));
 		}
 
 		[TestMethod]
 		public void NoLeadingZero()
 		{
-			var parser = new MathParser();
+			var calculator = new Calculator();
 
-			Assert.AreEqual(0.5, parser.Parse(".5"));
-			Assert.AreEqual(0.5, parser.Parse(".25 + .25"));
-			Assert.AreEqual(2.0, parser.Parse("1.5 + .5"));
-			Assert.AreEqual(-0.25, parser.Parse(".25 + (-.5)"));
-			Assert.AreEqual(0.25, parser.Parse(".5(.5)"));
+			Assert.AreEqual(0.5, calculator.Compute(".5"));
+			Assert.AreEqual(0.5, calculator.Compute(".25 + .25"));
+			Assert.AreEqual(2.0, calculator.Compute("1.5 + .5"));
+			Assert.AreEqual(-0.25, calculator.Compute(".25 + (-.5)"));
+			Assert.AreEqual(0.25, calculator.Compute(".5(.5)"));
 		}
 
 		public class BenchmarkUtil

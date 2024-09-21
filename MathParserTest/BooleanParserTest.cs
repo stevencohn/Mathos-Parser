@@ -7,12 +7,12 @@ namespace Mathos.Parser.Test
     public class BooleanParserTest
     {
         private BooleanParser parser;
-        private MathParser mathParser;
+        private Calculator mathParser;
 
         [TestInitialize]
         public void Initialize()
         {
-            mathParser = new MathParser();
+            mathParser = new Calculator();
             parser = new BooleanParser(mathParser);
         }
 

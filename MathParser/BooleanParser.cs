@@ -8,9 +8,9 @@ namespace Mathos.Parser
 	internal class BooleanParser
 	{
 		//public CultureInfo CultureInfo { get { return mathParser.CultureInfo; } }
-		private MathParser mathParser;
+		private Calculator mathParser;
 
-		public BooleanParser(MathParser parser)
+		public BooleanParser(Calculator parser)
 		{
 			this.mathParser = parser;
 		}

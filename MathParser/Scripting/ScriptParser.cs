@@ -13,11 +13,11 @@ namespace Mathos.Parser.Scripting
 		public IScriptParserLog Logger { get; set; }
 		public string LogFunctionName { get; set; } = "print";
 
-		private MathParser mathParser;
+		private Calculator mathParser;
 		private BooleanParser booleanParser;
 		public ScriptParser(IScriptParserLog logger = null)
 		{
-			mathParser = new MathParser();
+			mathParser = new Calculator();
 			booleanParser = new BooleanParser(mathParser);
 			this.Logger = logger;
 			if (logger == null)
