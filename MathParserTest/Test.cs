@@ -42,7 +42,7 @@ namespace Mathos.Parser.Test
 			calculator.SetVariable("col", 1);
 			calculator.SetVariable("row", 10);
 			// sum first three rows
-			Assert.AreEqual(123 * 3, calculator.Compute("sum(A1:A3)"));
+			Assert.AreEqual(123 * 3, calculator.Compute("sum(a1:a3)"));
 			// sum A1:A9 - all rows except last row (current cell)
 			Assert.AreEqual(123 * 9, calculator.Compute("sum(A1:cell(0,-1))"));
 
@@ -103,6 +103,10 @@ namespace Mathos.Parser.Test
 			Assert.AreEqual(4, calculator.Compute("countif(A1:A10, < A5)"));
 			Assert.AreEqual(5, calculator.Compute("countif(D1:D10, true)"));
 			Assert.AreEqual(6, calculator.Compute("countif(C1:C10, !abc)"));
+
+			calculator.SetVariable("col", 3);
+			calculator.SetVariable("row", 10);
+			Assert.AreEqual(6, calculator.Compute("countif(C1:cell(0,0), !abc)"));
 		}
 
 

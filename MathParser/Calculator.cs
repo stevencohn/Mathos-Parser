@@ -192,21 +192,8 @@ namespace Mathos.Parser
 		public double Compute(string expression)
 		{
 			var tokens = Parse(expression);
-
 			ReplaceVariables(tokens);
-
-			if (tokens.Exists(t =>
-				t.Equals(CountifFnName, StringComparison.CurrentCultureIgnoreCase)))
-			{
-				PreprocessCountifFn(tokens);
-			}
-
-			if (tokens.Exists(t =>
-				t.Equals(CellFnName, StringComparison.CurrentCultureIgnoreCase)))
-			{
-				PreprocessCellFn(tokens);
-			}
-
+			PreprocessTableFunctions(tokens);
 			GetCellContents(tokens);
 			return Evaluate(tokens);
 		}
@@ -488,7 +475,7 @@ namespace Mathos.Parser
 		}
 
 
-		private void PreprocessCellFn(List<string> tokens)
+		private void PreprocessTableFunctions(List<string> tokens)
 		{
 			var open = tokens.LastIndexOf("(");
 			while (open > 0) // leave room for "cell" fn token prior to "("
@@ -499,49 +486,15 @@ namespace Mathos.Parser
 					throw new CalculatorException($"No closing bracket/parenthesis. Token: {open}");
 				}
 
-				if (tokens[open - 1].Equals(CellFnName, StringComparison.CurrentCultureIgnoreCase))
+				if (tokens[open - 1]
+					.Equals(CellFnName, StringComparison.CurrentCultureIgnoreCase))
 				{
-					var lparams = new List<string>();
-					var rparams = new List<string>();
-					var commas = 0;
-					for (var i = open + 1; i < close; i++)
-					{
-						if (tokens[i] == ",")
-						{
-							commas++;
-						}
-						else if (commas == 0)
-						{
-							lparams.Add(tokens[i]);
-						}
-						else
-						{
-							rparams.Add(tokens[i]);
-						}
-					}
-
-					if (commas != 1)
-					{
-						throw new CalculatorException(
-							$"The {CellFnName} function must have two parameters");
-					}
-
-					if (!variables.ContainsKey("col") || !variables.ContainsKey("row"))
-					{
-						throw new CalculatorException(
-							$"The {CellFnName} function requires the col and row variables");
-					}
-
-					var currentCol = variables["col"];
-					var currentRow = variables["row"];
-
-					var col = (int)currentCol + (int)EvaluateBasicMathExpression(lparams);
-					var row = (int)currentRow + (int)EvaluateBasicMathExpression(rparams);
-
-					var cellName = $"{CellIndexToLetters(col)}{row}";
-
-					tokens.RemoveRange(open - 1, close - open + 2);
-					tokens.Insert(open - 1, cellName);
+					PreprocessCellFn(tokens, open, close);
+				}
+				else if (tokens[open - 1]
+					.Equals(CountifFnName, StringComparison.CurrentCultureIgnoreCase))
+				{
+					PreprocessCountifFn(tokens, open, close);
 				}
 
 				open = tokens.LastIndexOf("(", open - 1);
@@ -550,6 +503,77 @@ namespace Mathos.Parser
 			for (var i = 0; i < tokens.Count; i++)
 			{
 				Debug.WriteLine($"... precell[{i}] = [{tokens[i]}]");
+			}
+		}
+
+
+		private void PreprocessCellFn(List<string> tokens, int open, int close)
+		{
+			var lparams = new List<string>();
+			var rparams = new List<string>();
+			var commas = 0;
+			for (var i = open + 1; i < close; i++)
+			{
+				if (tokens[i] == ",")
+				{
+					commas++;
+				}
+				else if (commas == 0)
+				{
+					lparams.Add(tokens[i]);
+				}
+				else
+				{
+					rparams.Add(tokens[i]);
+				}
+			}
+
+			if (commas != 1)
+			{
+				throw new CalculatorException(
+					$"The {CellFnName} function must have two parameters");
+			}
+
+			if (!variables.ContainsKey("col") || !variables.ContainsKey("row"))
+			{
+				throw new CalculatorException(
+					$"The {CellFnName} function requires the col and row variables");
+			}
+
+			var currentCol = variables["col"];
+			var currentRow = variables["row"];
+
+			var col = (int)currentCol + (int)EvaluateBasicMathExpression(lparams);
+			var row = (int)currentRow + (int)EvaluateBasicMathExpression(rparams);
+
+			var cellName = $"{CellIndexToLetters(col)}{row}";
+
+			tokens.RemoveRange(open - 1, close - open + 2);
+			tokens.Insert(open - 1, cellName);
+		}
+
+
+		private static void PreprocessCountifFn(List<string> tokens, int open, int close)
+		{
+			var last = tokens.LastIndexOf(",", close);
+			if (last > open)
+			{
+				var op = tokens[last + 1];
+				// is there an explicit operator?
+				if (op == ">" || op == "<" || op == "!")
+				{
+					if (op == ">") tokens[last + 1] = "1";
+					else if (op == "<") tokens[last + 1] = "-1";
+					else if (op == "!") tokens[last + 1] = "3";
+
+					tokens.Insert(last + 2, ",");
+				}
+				else
+				{
+					// convert implicit equals to explicit
+					tokens.Insert(last, "0");
+					tokens.Insert(last, ",");
+				}
 			}
 		}
 
@@ -575,7 +599,7 @@ namespace Mathos.Parser
 						$"undefined cell ref [{tokens[index - 1]}]");// string.Format(ErrUndefinedSymbol, cell1), p1);
 				}
 
-				var col1 = match.Groups[1].Value;
+				var col1 = match.Groups[1].Value.ToUpper();
 				var row1 = match.Groups[2].Value;
 
 				match = pattern.Match(tokens[index + 1]);
@@ -585,7 +609,7 @@ namespace Mathos.Parser
 						$"undefined cell ref [{tokens[index - 1]}]");//string.Format(ErrUndefinedSymbol, cell1), p1);
 				}
 
-				var col2 = match.Groups[1].Value;
+				var col2 = match.Groups[1].Value.ToUpper();
 				var row2 = match.Groups[2].Value;
 
 				// expand...
@@ -655,52 +679,6 @@ namespace Mathos.Parser
 				}
 
 				index = index < tokens.Count - 1 ? tokens.IndexOf(":", index + 1) : -1;
-			}
-		}
-
-
-		private static void PreprocessCountifFn(List<string> tokens)
-		{
-			var open = tokens.LastIndexOf("(");
-			while (open > 0) // leave room for fn name token prior to "("
-			{
-				var close = tokens.IndexOf(")", open);
-				if (open >= close)
-				{
-					throw new CalculatorException($"No closing bracket/parenthesis. Token: {open}");
-				}
-
-				// is this the fn name we're looking for?
-				if (tokens[open - 1].Equals(CountifFnName, StringComparison.CurrentCultureIgnoreCase))
-				{
-					var last = tokens.LastIndexOf(",", close);
-					if (last > open)
-					{
-						var op = tokens[last + 1];
-						// is there an explicit operator?
-						if (op == ">" || op == "<" || op == "!")
-						{
-							if (op == ">") tokens[last + 1] = "1";
-							else if (op == "<") tokens[last + 1] = "-1";
-							else if (op == "!") tokens[last + 1] = "3";
-
-							tokens.Insert(last + 2, ",");
-						}
-						else
-						{
-							// convert implicit equals to explicit
-							tokens.Insert(last, "0");
-							tokens.Insert(last, ",");
-						}
-					}
-				}
-
-				open = tokens.LastIndexOf("(", open - 1);
-			}
-
-			for (var i = 0; i < tokens.Count; i++)
-			{
-				Debug.WriteLine($"... precountif[{i}] = [{tokens[i]}]");
 			}
 		}
 
