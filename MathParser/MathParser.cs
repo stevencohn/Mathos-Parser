@@ -778,105 +778,96 @@ namespace Mathos.Parser
 			while (open != -1)
 			{
 				// getting data between "(" and ")"
-				var close = tokens.IndexOf(")", open); // incase open is -1, i.e. no "(" // , open == 0 ? 0 : open - 1
+				var close = tokens.IndexOf(")", open
+					); // incase open is -1, i.e. no "(" // , open == 0 ? 0 : open - 1
 
 				if (open >= close)
 				{
-					throw new ArithmeticException("No closing bracket/parenthesis. Token: " + open.ToString(cultureInfo));
-				}
-
-				var subexpr = new List<string>();
-				for (var i = open + 1; i < close; i++)
-				{
-					subexpr.Add(tokens[i]);
+					throw new ArithmeticException(
+						$"no closing bracket/parenthesis matching index {open}");
 				}
 
 				double result;
 
-				var args = new List<double>();
-				var functionName = tokens[open == 0 ? 0 : open - 1];
-
-				// looks for built-in overrides first before user-defined functions
-				var fn = functions.Keys.Contains(functionName)
-					? functions[functionName]
-					: factory.Find(functionName);
-
-				if (fn is not null)
+				// parenthetical elements
+				var elements = new List<string>();
+				for (var i = open + 1; i < close; i++)
 				{
-					if (subexpr.Contains(","))
-					{
-						// converting all arguments into a double array
-						for (var i = 0; i < subexpr.Count; i++)
-						{
-							var defaultExpr = new List<string>();
-							var firstCommaOrEndOfExpression =
-								subexpr.IndexOf(",", i) != -1
-									? subexpr.IndexOf(",", i)
-									: subexpr.Count;
+					elements.Add(tokens[i]);
+				}
 
-							while (i < firstCommaOrEndOfExpression)
-							{
-								defaultExpr.Add(subexpr[i++]);
-							}
+				var name = tokens[open == 0 ? 0 : open - 1];
+				var func = functions.Keys.Contains(name)
+					? functions[name]
+					: factory.Find(name);
 
-							args.Add(defaultExpr.Count == 0 ? 0 : BasicArithmeticalExpression(defaultExpr));
-						}
-
-						// finally, passing the arguments to the given function
-						result = double.Parse(
-							fn(new VariantList(args)).ToString(cultureInfo),
-							cultureInfo);
-					}
-					else
-					{
-						if (subexpr.Count == 0)
-						{
-							result = fn(new VariantList());
-						}
-						else
-						{
-							result = double.Parse(
-								fn(new VariantList(BasicArithmeticalExpression(subexpr))
-							).ToString(cultureInfo), cultureInfo);
-						}
-					}
+				if (func is null)
+				{
+					// no function, just simple math
+					result = BasicArithmeticalExpression(elements);
+				}
+				else if (elements.Count == 0)
+				{
+					result = func(new VariantList());
 				}
 				else
 				{
-					// if no function is need to execute following expression, pass it
-					// to the "BasicArithmeticalExpression" method.
-					result = BasicArithmeticalExpression(subexpr);
+					var vargs = new VariantList();
+					var i = 0;
+					while (i < elements.Count)
+					{
+						var expr = new List<string>();
+						var nextComma = elements.IndexOf(",", i);
+						var end = nextComma != -1 ? nextComma : elements.Count;
+						while (i < end)
+						{
+							expr.Add(elements[i++]);
+						}
+
+						// this is an exception case for countif where the first n parameters and
+						// the last parameter can be true/false/string
+						if (name == CountifFnName &&
+							expr.Count == 1 &&
+							!double.TryParse(expr[0], NumberStyles.Number, cultureInfo, out _))
+						{
+							// countif match paramter
+							vargs.Add(new Variant(expr[0]));
+						}
+						else
+						{
+							var r = expr.Count == 0 ? 0 : BasicArithmeticalExpression(expr);
+							vargs.Add(new Variant(r));
+						}
+
+						i++;
+					}
+
+					result = func(vargs);
 				}
 
-				// when all the calculations have been done
-				// we replace the "opening bracket with the result"
-				// and removing the rest.
+				// when all calcs are done, replace opening bracket with result and remove rest
 				tokens[open] = result.ToString(cultureInfo);
 				tokens.RemoveRange(open + 1, close - open);
 
-				if (fn is not null)
+				if (func is not null)
 				{
-					// if we also executed a function, removing
-					// the function name as well.
+					// remove function name as well
 					tokens.RemoveAt(open - 1);
 				}
 
 				open = tokens.LastIndexOf("(");
 			}
 
-			// at this point, we should have replaced all brackets
-			// with the appropriate values, so we can simply
-			// calculate the expression. it's not so complex
-			// any more!
+			// at this point, we should have replaced all brackets with the appropriate values,
+			// so we can simply calculate the expression
 			return BasicArithmeticalExpression(tokens);
 		}
 
 
 		private double BasicArithmeticalExpression(List<string> tokens)
 		{
-			// PERFORMING A BASIC ARITHMETICAL EXPRESSION CALCULATION
-			// THIS METHOD CAN ONLY OPERATE WITH NUMBERS AND OPERATORS
-			// AND WILL NOT UNDERSTAND ANYTHING BEYOND THAT.
+			// PERFORMING A BASIC ARITHMETICAL EXPRESSION CALCULATION. THIS METHOD CAN ONLY
+			// OPERATE WITH NUMBERS AND OPERATORS AND WILL NOT UNDERSTAND ANYTHING BEYOND THAT.
 
 			double token0;
 			double token1;

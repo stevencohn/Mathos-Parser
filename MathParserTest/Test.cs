@@ -29,11 +29,11 @@ namespace Mathos.Parser.Test
 
 			parser.GetCellValue += (object sender, GetCellValueEventArgs args) =>
 			{
-				Debug.WriteLine($"calling GetCellValue({args.Name})");
 				args.Value = 123.ToString();
+				Debug.WriteLine($"GetCellValue({args.Name}) => [{args.Value}]");
 			};
 
-			Assert.AreEqual(123, parser.Parse("A1"));
+			Assert.AreEqual(123, parser.Parse("a1"));
 			Assert.AreEqual(125, parser.Parse("A1 + 2"));
 
 			Assert.AreEqual(7, parser.Parse("tablecols + 2"));
@@ -60,7 +60,7 @@ namespace Mathos.Parser.Test
 			// sum B2:B9
 			Assert.AreEqual(123 * 9, parser.Parse("sum(B2:cell(0,tablerows-1))"));
 			// sum C1:E1
-			Assert.AreEqual(123 * 4, parser.Parse("sum(C1:cell(tablecols-1,0))"));
+			Assert.AreEqual(123 * 4, parser.Parse("sum(C1:cell(tablecols - 1, 0))"));
 		}
 
 
@@ -97,12 +97,12 @@ namespace Mathos.Parser.Test
 				Debug.WriteLine($"GetCellValue({args.Name}) => [{args.Value}]");
 			};
 
-			Assert.AreEqual(1, parser.Parse("countif(A1:A3, 2)"));
+			Assert.AreEqual(1, parser.Parse("countif(A1:A3, 1 + 1)"));
 			Assert.AreEqual(4, parser.Parse("countif(B1:B10, 1)"));
 			Assert.AreEqual(6, parser.Parse("countif(B1:B10, !1)"));
-			Assert.AreEqual(4, parser.Parse("countif(A1:A10, < 5)"));
-
-			Assert.AreEqual(5, parser.Parse("countif(C1:C10, !abc)"));
+			Assert.AreEqual(4, parser.Parse("countif(A1:A10, < A5)"));
+			Assert.AreEqual(5, parser.Parse("countif(D1:D10, true)"));
+			Assert.AreEqual(6, parser.Parse("countif(C1:C10, !abc)"));
 		}
 
 

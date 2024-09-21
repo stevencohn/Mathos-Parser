@@ -116,6 +116,10 @@ namespace Mathos.Parser
 		{
 			get => list[i].DoubleValue;
 		}
+		public void Add(Variant variant)
+		{
+			list.Add(variant);
+		}
 		public VariantList Assert(params VariantType[] types)
 		{
 			// list should contain at least the required types
