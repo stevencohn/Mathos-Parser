@@ -1,8 +1,8 @@
 ﻿//************************************************************************************************
 // Copyright © 2024 Steven M Cohn. All rights reserved.
 //
-// This is a heavily modified adaption of the Mathos.Parser by artem@atemlos.net, customized for
-// the OneMore table calculator. Copyright © 2012-2019, Mathos Project. All rights reserved.
+// This is a heavily modified adaptation of the Mathos.Parser by artem@atemlos.net, customized
+// for the OneMore table calculator. Copyright © 2012-2019, Mathos Project. All rights reserved.
 //
 //************************************************************************************************
 
